@@ -5,8 +5,9 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, HeartHandshake, LockKeyhole, LogIn, Save, ScrollText, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
 import "./AnnualManual.css";
 import { startLogin } from "@/const";
+import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { deriveLifeThemes, type LifeThemeKey } from "@/lib/lifeThemes";
-import { manualCopy, manualEntry, manualLocales, manualMonth, type ManualLocale } from "@/lib/manualLanguage";
+import { manualCopy, manualEntry, manualMonth } from "@/lib/manualLanguage";
 import { trpc } from "@/lib/trpc";
 import type { BaziInput, BaziResult } from "@/lib/bazi";
 
@@ -19,7 +20,15 @@ type AnnualManualProps = {
 
 type ArchiveProfile = { name: string; birthPlace: string; residence: string; year: number };
 
+const annualUiCopy = {
+  "zh-CN": { kicker: "年度阅读 / 04", intro: "不必一次看完。", accent: "先读下一卷。", body: "先用一分钟完成引导，再进入与你的排盘、目标年份与下一节相关的正式阅读。", name: "称呼或姓名", namePlaceholder: "例如：王二小", year: "阅读年份", birthPlace: "出生地点", birthPlaceholder: "例如：北京市东城区", residence: "现居详细地址", residencePlaceholder: "可填写至门牌号；仅明确保存时才写入私有档案", privacy: "未点击保存前，资料只停留在当前页面。", emptyKicker: "一个清晰的下一步", emptyTitle: "现在不需要处理全部资料。", emptyBody: "左侧完成称呼与年份后，系统会从服务端按北京时间与下一节，准备一卷可以直接开始的未来月卷。", unnamed: "未署名" },
+  "zh-TW": { kicker: "年度閱讀 / 04", intro: "不必一次看完。", accent: "先讀下一卷。", body: "先用一分鐘完成引導，再進入與你的排盤、目標年份與下一節相關的正式閱讀。", name: "稱呼或姓名", namePlaceholder: "例如：王二小", year: "閱讀年份", birthPlace: "出生地點", birthPlaceholder: "例如：北京市東城區", residence: "現居詳細地址", residencePlaceholder: "可填寫至門牌號；僅明確保存時才寫入私人檔案", privacy: "未點擊保存前，資料只停留在目前頁面。", emptyKicker: "一個清晰的下一步", emptyTitle: "現在不需要處理全部資料。", emptyBody: "左側完成稱呼與年份後，系統會從伺服器按北京時間與下一節，準備一卷可以直接開始的未來月卷。", unnamed: "未署名" },
+  en: { kicker: "ANNUAL READING / 04", intro: "You do not need to read it all at once.", accent: "Begin with the next volume.", body: "Spend one minute on the guide, then enter a focused reading connected to your chart, chosen year, and next solar term.", name: "Name or preferred form of address", namePlaceholder: "For example: Wang Erxiao", year: "Reading year", birthPlace: "Birthplace", birthPlaceholder: "For example: Dongcheng District, Beijing", residence: "Current address", residencePlaceholder: "You may include a street number; it is saved only when you explicitly choose to save.", privacy: "Until you choose Save, these details remain only on this page.", emptyKicker: "ONE CLEAR NEXT STEP", emptyTitle: "You do not need to process every detail now.", emptyBody: "After confirming a name and year, the server uses Beijing time and the next solar term to prepare one future volume you can start immediately.", unnamed: "Unsigned" },
+} as const;
+
 export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }: AnnualManualProps) {
+  const { locale: selectedLocale } = useAppLocale();
+  const ui = annualUiCopy[selectedLocale];
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const [profile, setProfile] = useState<ArchiveProfile>({ name: "王二小", birthPlace: "", residence: "", year: currentYear });
   const [started, setStarted] = useState(false);
@@ -28,14 +37,11 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [storageStatus, setStorageStatus] = useState("");
-  const [locale, setLocale] = useState<ManualLocale | null>(null);
   const [activeTheme, setActiveTheme] = useState<LifeThemeKey>("relationship");
   const archiveUtils = trpc.useUtils();
   const annualWindow = trpc.annual.window.useQuery({ targetYear: profile.year });
-  const localeQuery = trpc.locale.current.useQuery();
   const annualMethod = trpc.annual.method.useQuery();
   const archivesQuery = trpc.archives.list.useQuery(undefined, { enabled: isAuthenticated && showArchive });
-  const setLocalePreference = trpc.locale.set.useMutation({ onSuccess: () => localeQuery.refetch() });
   const saveArchive = trpc.archives.save.useMutation({
     onSuccess: () => {
       setStorageStatus("已保存至仅自己可见的私有档案。");
@@ -52,9 +58,8 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   });
 
   const annualAccess = annualWindow.data;
-  const selectedLocale = locale || localeQuery.data?.locale || "zh-CN";
   const copy = manualCopy[selectedLocale];
-  const profileName = profile.name.trim() || "未署名";
+  const profileName = profile.name.trim() || ui.unnamed;
   const dayPillar = result.pillars.find((pillar) => pillar.key === "day")?.ganzhi || "日柱";
   const activeEntry = activeMonth === null ? undefined : manualEntry(selectedLocale, activeMonth);
   const themes = useMemo(() => deriveLifeThemes(result, selectedLocale), [result, selectedLocale]);
@@ -66,19 +71,6 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
       setActiveMonth(annualAccess.openMonths[0] - 1);
     }
   }, [activeMonth, annualAccess?.openMonths, started]);
-
-  useEffect(() => {
-    if (localeQuery.data?.locale && locale === null) setLocale(localeQuery.data.locale);
-  }, [locale, localeQuery.data?.locale]);
-
-  useEffect(() => {
-    document.documentElement.lang = selectedLocale;
-  }, [selectedLocale]);
-
-  function chooseLocale(nextLocale: ManualLocale) {
-    setLocale(nextLocale);
-    if (isAuthenticated) setLocalePreference.mutate({ locale: nextLocale });
-  }
 
   async function beginReading(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,10 +115,10 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     <section className="manual-section" id="manual" aria-labelledby="manual-title">
       <header className="manual-intro">
         <div>
-          <div className="eyebrow"><ScrollText /> ANNUAL ARCHIVE / 04</div>
-          <h2 id="manual-title">不必一次看完。<br /><strong>先读下一卷。</strong></h2>
+          <div className="eyebrow"><ScrollText /> {ui.kicker}</div>
+          <h2 id="manual-title">{ui.intro}<br /><strong>{ui.accent}</strong></h2>
         </div>
-        <p>先用一分钟完成引导，再进入与你的排盘、目标年份与下一节相关的正式阅读。</p>
+        <p>{ui.body}</p>
       </header>
 
       <div className="manual-layout">
@@ -134,30 +126,30 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
           <div className="sheet-kicker"><span>03</span> {copy.guide}</div>
           <h3>{copy.choose}</h3>
           <p>{copy.guideBody}</p>
-          <div className="locale-control"><label htmlFor="manual-locale">{copy.language}</label><select id="manual-locale" value={selectedLocale} onChange={(event) => chooseLocale(event.target.value as ManualLocale)}>{manualLocales.map((value) => <option key={value} value={value}>{value === "zh-CN" ? "简体中文" : value === "zh-TW" ? "繁體中文" : "English"}</option>)}</select><small>{copy.autoLanguage}</small></div>
+          <p className="locale-control-note">{copy.autoLanguage}</p>
           <form onSubmit={beginReading}>
-            <label htmlFor="manual-name">{selectedLocale === "en" ? "Name or preferred form of address" : "称呼或姓名"}</label>
-            <input id="manual-name" value={profile.name} maxLength={24} placeholder="例如：王二小" onChange={(event) => setProfile((value) => ({ ...value, name: event.target.value }))} />
-            <label htmlFor="manual-year">{selectedLocale === "en" ? "Reading year" : "阅读年份"}</label>
+            <label htmlFor="manual-name">{ui.name}</label>
+            <input id="manual-name" value={profile.name} maxLength={24} placeholder={ui.namePlaceholder} onChange={(event) => setProfile((value) => ({ ...value, name: event.target.value }))} />
+            <label htmlFor="manual-year">{ui.year}</label>
             <select id="manual-year" value={profile.year} onChange={(event) => {
               setProfile((value) => ({ ...value, year: Number(event.target.value) }));
               setStarted(false);
               setActiveMonth(null);
             }}>
-              <option value={currentYear}>{currentYear} 年</option>
-              <option value={currentYear + 1}>{currentYear + 1} 年</option>
+              <option value={currentYear}>{currentYear}{selectedLocale === "en" ? "" : " 年"}</option>
+              <option value={currentYear + 1}>{currentYear + 1}{selectedLocale === "en" ? "" : " 年"}</option>
             </select>
             <button className="manual-create-button" type="submit" disabled={annualWindow.isFetching}><Sparkles /> {annualWindow.isFetching ? "…" : copy.start} <ChevronRight /></button>
           </form>
           <button className="optional-profile-toggle" type="button" aria-expanded={showOptionalProfile} onClick={() => setShowOptionalProfile((value) => !value)}><ChevronDown /> {copy.optional}</button>
-          {showOptionalProfile && <div className="optional-profile-fields"><label htmlFor="manual-birth-place">出生地点</label><input id="manual-birth-place" value={profile.birthPlace} maxLength={60} placeholder="例如：北京市东城区" onChange={(event) => setProfile((value) => ({ ...value, birthPlace: event.target.value }))} /><label htmlFor="manual-residence">现居详细地址</label><textarea id="manual-residence" value={profile.residence} maxLength={140} placeholder="可填写至门牌号；仅明确保存时才写入私有档案" onChange={(event) => setProfile((value) => ({ ...value, residence: event.target.value }))} /></div>}
-          <div className="manual-privacy"><ShieldCheck /> 未点击保存前，资料只停留在当前页面。</div>
+          {showOptionalProfile && <div className="optional-profile-fields"><label htmlFor="manual-birth-place">{ui.birthPlace}</label><input id="manual-birth-place" value={profile.birthPlace} maxLength={60} placeholder={ui.birthPlaceholder} onChange={(event) => setProfile((value) => ({ ...value, birthPlace: event.target.value }))} /><label htmlFor="manual-residence">{ui.residence}</label><textarea id="manual-residence" value={profile.residence} maxLength={140} placeholder={ui.residencePlaceholder} onChange={(event) => setProfile((value) => ({ ...value, residence: event.target.value }))} /></div>}
+          <div className="manual-privacy"><ShieldCheck /> {ui.privacy}</div>
           {storageStatus && <p className="archive-status" aria-live="polite">{storageStatus}</p>}
         </aside>
 
         <div className="manual-reading" id="manual-reading">
           {!started ? (
-            <div className="manual-empty-state focus-empty-state"><Compass /><div><span>ONE CLEAR NEXT STEP</span><h3>现在不需要处理全部资料。</h3><p>左侧完成称呼与年份后，系统会从服务端按北京时间与下一节，准备一卷可以直接开始的未来月卷。</p></div></div>
+            <div className="manual-empty-state focus-empty-state"><Compass /><div><span>{ui.emptyKicker}</span><h3>{ui.emptyTitle}</h3><p>{ui.emptyBody}</p></div></div>
           ) : (
             <>
               <header className="focus-reading-head"><div><span>{copy.prepared.replace("{name}", profileName)}</span><h3>{profile.year} {copy.future}</h3></div><p><b>{copy.nextJie}: {annualAccess?.nextJie || "…"}</b> · {copy.onlyFuture}</p></header>

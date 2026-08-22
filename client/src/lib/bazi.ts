@@ -54,6 +54,10 @@ export type BaziResult = {
   dayBoundaryNote: string;
 };
 
+export function formatCoordinate(value: number) {
+  return Number.isFinite(value) ? String(value) : "—";
+}
+
 const STEMS = "甲乙丙丁戊己庚辛壬癸";
 
 const pillarGetters = {
@@ -138,11 +142,11 @@ function formatYunSpan(year: number, month: number, day: number) {
 }
 
 export function calculateBazi(input: BaziInput): BaziResult {
-  if (!Number.isFinite(input.longitude) || input.longitude < 73 || input.longitude > 136) {
-    throw new Error("出生地经度请填写中国常用范围内的数值（73°E–136°E）。");
+  if (!Number.isFinite(input.longitude) || input.longitude < -180 || input.longitude > 180) {
+    throw new Error("出生地经度请填写 -180° 至 180° 之间的有效数值。");
   }
-  if (!Number.isFinite(input.latitude) || input.latitude < 3 || input.latitude > 54) {
-    throw new Error("出生地纬度请填写中国常用范围内的数值（3°N–54°N）。");
+  if (!Number.isFinite(input.latitude) || input.latitude < -90 || input.latitude > 90) {
+    throw new Error("出生地纬度请填写 -90° 至 90° 之间的有效数值。");
   }
 
   const originalDate = parseInputTime(input.datetime);

@@ -1,7 +1,8 @@
 /**
  * 观象历书导出工具：以本地 Canvas 绘制可核对的排盘卡片，避免将出生信息上传到服务端。
  */
-import type { BaziResult } from "@/lib/bazi";
+import { formatCoordinate, type BaziResult } from "@/lib/bazi";
+import type { ManualLocale } from "@/lib/manualLanguage";
 
 const PAPER = "#f5f1e8";
 const INK = "#1d2628";
@@ -50,7 +51,7 @@ function drawWrappedText(context: CanvasRenderingContext2D, text: string, x: num
   return row + 1;
 }
 
-export function formatBaziPlainText(result: BaziResult) {
+export function formatBaziPlainText(result: BaziResult, _locale: ManualLocale = "zh-CN") {
   const pillarLines = result.pillars.map((pillar) => (
     `${pillar.label}：${pillar.ganzhi}  天干十神：${pillar.stemShiShen}  地支藏干：${pillar.hiddenGan.join("、") || "—"}  纳音：${pillar.naYin}  地势：${pillar.diShi}`
   ));
@@ -63,7 +64,7 @@ export function formatBaziPlainText(result: BaziResult) {
     "=".repeat(26),
     `原始北京时间：${result.originalTime}`,
     `用于排盘的时刻：${result.correctedTime}`,
-    `出生地坐标：东经 ${result.longitude.toFixed(4)}°，北纬 ${result.latitude.toFixed(4)}°`,
+    `出生地坐标：经度 ${formatCoordinate(result.longitude)}°，纬度 ${formatCoordinate(result.latitude)}°`,
     `经度校正：${formatCorrection(result.correctionMinutes)}（真太阳时）`,
     "",
     "四柱",
@@ -88,7 +89,7 @@ async function canvasToBlob(canvas: HTMLCanvasElement) {
   });
 }
 
-export async function downloadBaziPng(result: BaziResult) {
+export async function downloadBaziPng(result: BaziResult, _locale: ManualLocale = "zh-CN") {
   const width = 1600;
   const height = 1280;
   const canvas = document.createElement("canvas");
@@ -146,7 +147,7 @@ export async function downloadBaziPng(result: BaziResult) {
   context.font = `600 24px ${MONO}`;
   context.fillText(result.originalTime, 88, 329);
   context.fillText(result.correctedTime, 555, 329);
-  context.fillText(`${result.longitude.toFixed(4)}°E · ${result.latitude.toFixed(4)}°N`, 1055, 329);
+  context.fillText(`${formatCoordinate(result.longitude)}° · ${formatCoordinate(result.latitude)}°`, 1055, 329);
   drawRule(context, 360, width);
 
   const startX = 88;
@@ -226,8 +227,8 @@ export async function downloadBaziPng(result: BaziResult) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-export async function copyBaziPlainText(result: BaziResult) {
-  const text = formatBaziPlainText(result);
+export async function copyBaziPlainText(result: BaziResult, locale: ManualLocale = "zh-CN") {
+  const text = formatBaziPlainText(result, locale);
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
     return;

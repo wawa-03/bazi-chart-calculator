@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AnnualManual } from "@/components/AnnualManual";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
-import { BaziInput, BaziResult, calculateBazi } from "@/lib/bazi";
+import { BaziInput, BaziResult, calculateBazi, formatCoordinate } from "@/lib/bazi";
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
+import { useAppLocale } from "@/contexts/AppLocaleContext";
+import { siteCopy } from "@/lib/siteCopy";
 
 const DEFAULT_INPUT: BaziInput = {
   datetime: "1990-01-27T00:00",
@@ -41,101 +43,113 @@ const ELEMENT_COLORS: Record<string, string> = {
   水: "element-water",
 };
 
-function formatCorrection(minutes: number) {
+function formatCorrection(minutes: number, locale: "zh-CN" | "zh-TW" | "en") {
   const sign = minutes >= 0 ? "+" : "−";
   const total = Math.round(Math.abs(minutes));
-  return `${sign}${Math.floor(total / 60)}时${String(total % 60).padStart(2, "0")}分`;
+  const hours = Math.floor(total / 60);
+  const remainder = String(total % 60).padStart(2, "0");
+  return locale === "en" ? `${sign}${hours}h ${remainder}m` : `${sign}${hours}时${remainder}分`;
 }
 
 function ElementDots({ wuxing }: { wuxing: string }) {
   const elements = Array.from(new Set(wuxing.split("").filter((char) => ELEMENT_COLORS[char])));
   return (
-    <span className="element-dots" aria-label={`五行：${elements.join("、") || "未标注"}`}>
-      {elements.map((element) => (
-        <i className={ELEMENT_COLORS[element]} key={element} title={element} />
-      ))}
+    <span className="element-dots" aria-label={`五行：${elements.join("、") || "—"}`}>
+      {elements.map((element) => <i className={ELEMENT_COLORS[element]} key={element} title={element} />)}
     </span>
   );
 }
 
-function PillarCard({ pillar, index }: { pillar: BaziResult["pillars"][number]; index: number }) {
+function PillarCard({ pillar, index, labels }: { pillar: BaziResult["pillars"][number]; index: number; labels: typeof siteCopy["zh-CN"]["result"] }) {
   return (
     <article className="pillar-card" style={{ "--pillar-delay": `${index * 65}ms` } as React.CSSProperties}>
       <div className="pillar-head">
-        <span>{pillar.label}</span>
-        {pillar.key === "day" ? <em>日主</em> : <ElementDots wuxing={pillar.wuxing} />}
+        <span>{labels.localPillars[pillar.key]}</span>
+        {pillar.key === "day" ? <em>{labels.dayMaster}</em> : <ElementDots wuxing={pillar.wuxing} />}
       </div>
-      <div className="pillar-glyphs" aria-label={`${pillar.label} ${pillar.ganzhi}`}>
-        <strong>{pillar.stem}</strong>
-        <span />
-        <strong>{pillar.branch}</strong>
+      <div className="pillar-glyphs" aria-label={`${labels.localPillars[pillar.key]} ${pillar.ganzhi}`}>
+        <strong>{pillar.stem}</strong><span /><strong>{pillar.branch}</strong>
       </div>
       <div className="pillar-details">
-        <div><span>天干十神</span><b>{pillar.stemShiShen}</b></div>
-        <div><span>地支藏干</span><b>{pillar.hiddenGan.join(" · ") || "—"}</b></div>
-        <div><span>纳音 / 地势</span><b>{pillar.naYin} · {pillar.diShi}</b></div>
+        <div><span>{labels.stemDeity}</span><b>{pillar.stemShiShen}</b></div>
+        <div><span>{labels.hiddenStems}</span><b>{pillar.hiddenGan.join(" · ") || "—"}</b></div>
+        <div><span>{labels.naYinState}</span><b>{pillar.naYin} · {pillar.diShi}</b></div>
       </div>
     </article>
   );
 }
 
 export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
   const { isAuthenticated } = useAuth();
-
+  const { locale, setLocale } = useAppLocale();
+  const copy = siteCopy[locale];
   const [input, setInput] = useState<BaziInput>(DEFAULT_INPUT);
+  const [longitudeText, setLongitudeText] = useState(() => formatCoordinate(DEFAULT_INPUT.longitude));
+  const [latitudeText, setLatitudeText] = useState(() => formatCoordinate(DEFAULT_INPUT.latitude));
   const [result, setResult] = useState<BaziResult>(() => calculateBazi(DEFAULT_INPUT));
   const [formError, setFormError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
-  const correctionPreview = useMemo(() => (Number(input.longitude) - 120) * 4, [input.longitude]);
+  const correctionPreview = useMemo(() => (Number(longitudeText) - 120) * 4, [longitudeText]);
+
+  function parseDraftInput(): BaziInput {
+    const longitude = Number(longitudeText.trim());
+    const latitude = Number(latitudeText.trim());
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) throw new Error(copy.form.error);
+    return { ...input, longitude, latitude };
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      setResult(calculateBazi({ ...input, longitude: Number(input.longitude) }));
+      const nextInput = parseDraftInput();
+      const nextResult = calculateBazi(nextInput);
+      setInput(nextInput);
+      setResult(nextResult);
       setFormError("");
       window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
     } catch (calculationError) {
-      setFormError(calculationError instanceof Error ? calculationError.message : "无法完成本次推算，请核对输入。");
+      setFormError(calculationError instanceof Error ? calculationError.message : copy.form.error);
     }
   }
 
   function restoreExample() {
     setInput(DEFAULT_INPUT);
+    setLongitudeText(formatCoordinate(DEFAULT_INPUT.longitude));
+    setLatitudeText(formatCoordinate(DEFAULT_INPUT.latitude));
     setResult(calculateBazi(DEFAULT_INPUT));
     setFormError("");
   }
 
   function handleCitySelect(location: CityLocation) {
     setInput((current) => ({ ...current, longitude: location.longitude, latitude: location.latitude }));
+    setLongitudeText(formatCoordinate(location.longitude));
+    setLatitudeText(formatCoordinate(location.latitude));
     setFormError("");
   }
 
   const restoreSavedChart = useCallback((savedInput: BaziInput) => {
     try {
       setInput(savedInput);
+      setLongitudeText(formatCoordinate(savedInput.longitude));
+      setLatitudeText(formatCoordinate(savedInput.latitude));
       setResult(calculateBazi(savedInput));
       setFormError("");
       window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
     } catch (calculationError) {
-      setFormError(calculationError instanceof Error ? calculationError.message : "保存的排盘资料无法恢复。");
+      setFormError(calculationError instanceof Error ? calculationError.message : copy.form.error);
     }
-  }, []);
+  }, [copy.form.error]);
 
   async function handlePngExport() {
     setIsExporting(true);
     setExportStatus("");
     try {
-      await downloadBaziPng(result);
-      setExportStatus("PNG 排盘卡片已开始下载。");
+      await downloadBaziPng(result, locale);
+      setExportStatus(locale === "en" ? "The PNG chart download has started." : locale === "zh-TW" ? "PNG 排盤卡已開始下載。" : "PNG 排盘卡片已开始下载。");
     } catch (exportError) {
-      setExportStatus(exportError instanceof Error ? exportError.message : "PNG 导出未完成，请稍后重试。");
+      setExportStatus(exportError instanceof Error ? exportError.message : copy.form.error);
     } finally {
       setIsExporting(false);
     }
@@ -143,239 +157,92 @@ export default function Home() {
 
   async function handleTextCopy() {
     setIsCopying(true);
-    setExportStatus("正在复制纯文本排盘…");
+    setExportStatus(locale === "en" ? "Copying plain-text chart…" : locale === "zh-TW" ? "正在複製純文字排盤…" : "正在复制纯文本排盘…");
     try {
-      await copyBaziPlainText(result);
-      setExportStatus("纯文本排盘已复制到剪贴板。");
+      await copyBaziPlainText(result, locale);
+      setExportStatus(copy.result.copied);
     } catch (copyError) {
-      setExportStatus(copyError instanceof Error ? copyError.message : "纯文本复制未完成，请稍后重试。");
+      setExportStatus(copyError instanceof Error ? copyError.message : copy.form.error);
     } finally {
       setIsCopying(false);
     }
   }
 
+  const coordinateLabel = copy.result.coordinates.replace("{longitude}", formatCoordinate(result.longitude)).replace("{latitude}", formatCoordinate(result.latitude));
+
   return (
     <div className="app-shell">
       <header className="masthead">
-        <a className="brand" href="#top" aria-label="观历八字排盘工具首页">
-          <img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="观历星历印记" />
+        <a className="brand" href="#top" aria-label="Guanli home">
+          <img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="Guanli" />
           <span><b>观历</b><small>BĀZÌ / EPHEMERIS</small></span>
         </a>
-        <nav aria-label="页面导航">
-          <a href="#calculator">起盘 <ChevronRight /></a>
-          <a href="#manual">年卷 <ChevronRight /></a>
-          <a href="#method">依据 <ChevronRight /></a>
+        <nav aria-label="Page navigation">
+          <a href="#calculator">{copy.nav.calculator} <ChevronRight /></a>
+          <a href="#manual">{copy.nav.annual} <ChevronRight /></a>
+          <a href="#method">{copy.nav.method} <ChevronRight /></a>
         </nav>
-        <div className="local-status"><i /> 浏览器本地推算</div>
+        <label className="site-locale-control">
+          <span>{copy.language}</span>
+          <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)} aria-label={copy.language}>
+            <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">English</option>
+          </select>
+        </label>
+        <div className="local-status"><i /> {copy.localStatus}</div>
       </header>
 
       <main id="top">
         <section className="hero-section" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <div className="eyebrow"><Orbit /> OBSERVATION / 01</div>
-            <h1 id="hero-title">让出生时刻<br />回到它的<strong>天文位置</strong>。</h1>
-            <p>以节气为月界，以立春为岁首；将出生地经度折算为真太阳时后，输出可核对的四柱与基础历法信息。</p>
-            <div className="hero-notes">
-              <span><b>24</b> 节气分界</span>
-              <span><b>120°E</b> 标准经线</span>
-              <span><b>23:00</b> 晚子时换日</span>
-            </div>
+            <div className="eyebrow"><Orbit /> {copy.hero.kicker}</div>
+            <h1 id="hero-title">{copy.hero.titleBefore.split("\n").map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}<strong>{copy.hero.titleAccent}</strong>{locale === "en" ? "." : "。"}</h1>
+            <p>{copy.hero.body}</p>
+            <div className="hero-notes"><span><b>24</b> {copy.hero.notes[0]}</span><span><b>120°E</b> {copy.hero.notes[1]}</span><span><b>23:00</b> {copy.hero.notes[2]}</span></div>
           </div>
           <figure className="hero-figure">
-            <img src="/manus-storage/guanli-hero-astronomical-almanac_978f146c.jpg" alt="打开的天文历书、星盘与经纬刻度" />
-            <figcaption><span>历法工作台</span><i /> 请先核对时间与经度</figcaption>
+            <img src="/manus-storage/guanli-hero-astronomical-almanac_978f146c.jpg" alt="Astronomical almanac" />
+            <figcaption><span>{copy.hero.caption}</span><i /> {copy.hero.captionHint}</figcaption>
           </figure>
         </section>
 
-        <section className="workspace" aria-label="八字排盘工作区">
+        <section className="workspace" aria-label="Bazi calculator">
           <aside className="input-sheet" id="calculator">
-            <div className="sheet-kicker"><span>01</span> 输入侧注</div>
-            <div className="sheet-title-row">
-              <h2>校对出生条件</h2>
-              <Compass />
-            </div>
-            <p className="sheet-intro">请填写按北京时间记录的公历时刻。经度仅作此版本的<strong>地方时差</strong>修正。</p>
-
+            <div className="sheet-kicker"><span>01</span> {copy.form.kicker}</div>
+            <div className="sheet-title-row"><h2>{copy.form.title}</h2><Compass /></div>
+            <p className="sheet-intro">{copy.form.body}</p>
             <form onSubmit={handleSubmit}>
-              <label className="field-label" htmlFor="datetime">公历出生日期与时间</label>
-              <div className="field-with-icon">
-                <CalendarDays />
-                <input
-                  id="datetime"
-                  type="datetime-local"
-                  value={input.datetime}
-                  onChange={(event) => setInput((current) => ({ ...current, datetime: event.target.value }))}
-                  required
-                />
-              </div>
-
+              <label className="field-label" htmlFor="datetime">{copy.form.datetime}</label>
+              <div className="field-with-icon"><CalendarDays /><input id="datetime" type="datetime-local" value={input.datetime} onChange={(event) => setInput((current) => ({ ...current, datetime: event.target.value }))} required /></div>
               <CitySearch onSelect={handleCitySelect} />
-
-              <div className="field-head">
-                <label className="field-label" htmlFor="longitude">出生地经度</label>
-                <span>东经（°E）</span>
-              </div>
-              <div className="field-with-icon">
-                <MapPin />
-                <input
-                  id="longitude"
-                  type="number"
-                  min="73"
-                  max="136"
-                  step="0.0001"
-                  value={input.longitude}
-                  onChange={(event) => setInput((current) => ({ ...current, longitude: Number(event.target.value) }))}
-                  required
-                />
-              </div>
-              <div className="field-head latitude-head">
-                <label className="field-label" htmlFor="latitude">出生地纬度</label>
-                <span>北纬（°N）</span>
-              </div>
-              <div className="field-with-icon">
-                <Compass />
-                <input
-                  id="latitude"
-                  type="number"
-                  min="3"
-                  max="54"
-                  step="0.0001"
-                  value={input.latitude}
-                  onChange={(event) => setInput((current) => ({ ...current, latitude: Number(event.target.value) }))}
-                  required
-                />
-              </div>
-              <div className="formula-preview">
-                <span>地方时差</span>
-                <b>{formatCorrection(correctionPreview)}</b>
-                <small>({Number(input.longitude || 0).toFixed(4)}° − 120°) × 4 分/度</small>
-              </div>
-
-              <fieldset className="gender-fieldset">
-                <legend>性别（用于大运方向）</legend>
-                <div className="gender-options">
-                  <label className={input.gender === "male" ? "selected" : ""}>
-                    <input type="radio" name="gender" value="male" checked={input.gender === "male"} onChange={() => setInput((current) => ({ ...current, gender: "male" }))} />
-                    男
-                  </label>
-                  <label className={input.gender === "female" ? "selected" : ""}>
-                    <input type="radio" name="gender" value="female" checked={input.gender === "female"} onChange={() => setInput((current) => ({ ...current, gender: "female" }))} />
-                    女
-                  </label>
-                </div>
-              </fieldset>
-
+              <div className="field-head"><label className="field-label" htmlFor="longitude">{copy.form.longitude}</label><span>{copy.form.longitudeHint}</span></div>
+              <div className="field-with-icon"><MapPin /><input id="longitude" type="number" min="-180" max="180" step="any" inputMode="decimal" value={longitudeText} onChange={(event) => setLongitudeText(event.target.value)} required /></div>
+              <div className="field-head latitude-head"><label className="field-label" htmlFor="latitude">{copy.form.latitude}</label><span>{copy.form.latitudeHint}</span></div>
+              <div className="field-with-icon"><Compass /><input id="latitude" type="number" min="-90" max="90" step="any" inputMode="decimal" value={latitudeText} onChange={(event) => setLatitudeText(event.target.value)} required /></div>
+              <p className="coordinate-precision-note"><Info /> {copy.form.precision}</p>
+              <div className="formula-preview"><span>{copy.form.correction}</span><b>{formatCorrection(correctionPreview, locale)}</b><small>({formatCoordinate(Number(longitudeText || 0))}° − 120°) × 4 min/°</small></div>
+              <fieldset className="gender-fieldset"><legend>{copy.form.gender}</legend><div className="gender-options"><label className={input.gender === "male" ? "selected" : ""}><input type="radio" name="gender" value="male" checked={input.gender === "male"} onChange={() => setInput((current) => ({ ...current, gender: "male" }))} />{copy.form.male}</label><label className={input.gender === "female" ? "selected" : ""}><input type="radio" name="gender" value="female" checked={input.gender === "female"} onChange={() => setInput((current) => ({ ...current, gender: "female" }))} />{copy.form.female}</label></div></fieldset>
               {formError && <p className="form-error" role="alert">{formError}</p>}
-              <Button className="calculate-button" type="submit"><Sparkles /> 推算四柱 <ArrowDownRight /></Button>
+              <Button className="calculate-button" type="submit"><Sparkles /> {copy.form.calculate} <ArrowDownRight /></Button>
             </form>
-            <button className="example-button" type="button" onClick={restoreExample}><RotateCcw /> 恢复示例：1990.01.27 北京</button>
-
-            <div className="input-footnote"><Info /> 本工具不保存输入信息；结果仅供历法与文化研究参考。</div>
+            <button className="example-button" type="button" onClick={restoreExample}><RotateCcw /> {copy.form.example}</button>
+            <div className="input-footnote"><Info /> {copy.form.privacy}</div>
           </aside>
 
           <section className="result-page" id="result" aria-labelledby="result-title">
-            <header className="result-header">
-              <div>
-                <div className="sheet-kicker"><span>02</span> 四柱版心</div>
-                <h2 id="result-title">乾支排布 <small>八字</small></h2>
-              </div>
-              <div className="correction-seal">
-                <span>经度校正</span>
-                <b>{formatCorrection(result.correctionMinutes)}</b>
-                <small>真太阳时</small>
-              </div>
-            </header>
-
-            <div className="time-ledger">
-              <div><span>原始北京时间</span><b>{result.originalTime}</b></div>
-              <ArrowUpRight />
-              <div><span>用于排盘的时刻</span><b>{result.correctedTime}</b></div>
-              <em>经度 {result.longitude.toFixed(4)}°E · 纬度 {result.latitude.toFixed(4)}°N</em>
-            </div>
-
-            <div className="pillars-grid">
-              {result.pillars.map((pillar, index) => <PillarCard key={pillar.key} pillar={pillar} index={index} />)}
-            </div>
-
-            <div className="result-caption">
-              <span className="seal-stamp">已校</span>
-              <p><b>排盘规则：</b>{result.dayBoundaryNote} 年、月柱由内置历法的节气时刻界定；月柱按节而非农历月切换。</p>
-            </div>
-
-            <section className="export-panel" aria-label="排盘导出">
-              <div className="export-panel-copy">
-                <span>EXPORT / 03</span>
-                <p>导出仅在当前浏览器本地生成，不会上传出生信息。</p>
-              </div>
-              <div className="export-actions">
-                <Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>
-                  {isExporting ? <LoaderCircle className="export-spin" /> : <Download />}
-                  {isExporting ? "正在生成" : "下载 PNG 排盘卡"}
-                </Button>
-                <button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>
-                  {isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("已复制") ? <Check /> : <Copy />}
-                  {isCopying ? "正在复制" : "复制纯文本"}
-                </button>
-              </div>
-              <p className="export-status" aria-live="polite">{exportStatus}</p>
-            </section>
-
-            <div className="detail-grid">
-              <article className="detail-card solar-card">
-                <div className="detail-top"><span>节气校验</span><BookOpenText /></div>
-                <strong>{result.currentJieQi}</strong>
-                <p>前一节：{result.previousJie}<i /> 后一节：{result.nextJie}</p>
-              </article>
-              <article className="detail-card">
-                <div className="detail-top"><span>附加信息</span><span className="small-mark">A</span></div>
-                <dl>
-                  <div><dt>胎元</dt><dd>{result.taiYuan}</dd></div>
-                  <div><dt>命宫</dt><dd>{result.mingGong}</dd></div>
-                  <div><dt>身宫</dt><dd>{result.shenGong}</dd></div>
-                </dl>
-              </article>
-              <article className="detail-card direction-card">
-                <div className="detail-top"><span>大运方向</span><span className="small-mark">B</span></div>
-                <strong>{result.direction}</strong>
-                <p>起运：{result.startYunText}<br />起运日：{result.startYunDate}</p>
-              </article>
-            </div>
-
-            {result.daYun.length > 0 && (
-              <section className="fortune-section" aria-labelledby="fortune-title">
-                <div className="fortune-heading"><h3 id="fortune-title">大运序列</h3><span>按性别与年干阴阳推演</span></div>
-                <div className="fortune-strip">
-                  {result.daYun.map((item) => <div key={`${item.ganzhi}-${item.startYear}`}><b>{item.ganzhi}</b><span>{item.startAge}–{item.endAge} 岁</span><small>{item.startYear} 起</small></div>)}
-                </div>
-              </section>
-            )}
+            <header className="result-header"><div><div className="sheet-kicker"><span>02</span> {copy.result.kicker}</div><h2 id="result-title">{copy.result.title} <small>{copy.result.subtitle}</small></h2></div><div className="correction-seal"><span>{copy.result.correction}</span><b>{formatCorrection(result.correctionMinutes, locale)}</b><small>{copy.result.correctedSolarTime}</small></div></header>
+            <div className="time-ledger"><div><span>{copy.result.originalTime}</span><b>{result.originalTime}</b></div><ArrowUpRight /><div><span>{copy.result.chartTime}</span><b>{result.correctedTime}</b></div><em className="coordinate-display">{coordinateLabel}</em></div>
+            <div className="pillars-grid">{result.pillars.map((pillar, index) => <PillarCard key={pillar.key} pillar={pillar} index={index} labels={copy.result} />)}</div>
+            <div className="result-caption"><span className="seal-stamp">{locale === "en" ? "CHECKED" : "已校"}</span><p><b>{copy.result.rule}</b></p></div>
+            <section className="export-panel" aria-label={copy.result.exportKicker}><div className="export-panel-copy"><span>{copy.result.exportKicker}</span><p>{copy.result.exportBody}</p></div><div className="export-actions"><Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>{isExporting ? <LoaderCircle className="export-spin" /> : <Download />}{isExporting ? copy.result.generating : copy.result.download}</Button><button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>{isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("copied") || exportStatus.includes("已复制") || exportStatus.includes("已複製") ? <Check /> : <Copy />}{isCopying ? copy.result.copying : copy.result.copy}</button></div><p className="export-status" aria-live="polite">{exportStatus}</p></section>
+            <div className="detail-grid"><article className="detail-card solar-card"><div className="detail-top"><span>{copy.result.jieQi}</span><BookOpenText /></div><strong>{result.currentJieQi}</strong><p>{copy.result.previous}：{result.previousJie}<i /> {copy.result.next}：{result.nextJie}</p></article><article className="detail-card"><div className="detail-top"><span>{copy.result.additional}</span><span className="small-mark">A</span></div><dl><div><dt>{copy.result.fetalOrigin}</dt><dd>{result.taiYuan}</dd></div><div><dt>{copy.result.lifePalace}</dt><dd>{result.mingGong}</dd></div><div><dt>{copy.result.bodyPalace}</dt><dd>{result.shenGong}</dd></div></dl></article><article className="detail-card direction-card"><div className="detail-top"><span>{copy.result.direction}</span><span className="small-mark">B</span></div><strong>{result.direction}</strong><p>{copy.result.start}：{result.startYunText}<br />{copy.result.start}：{result.startYunDate}</p></article></div>
+            {result.daYun.length > 0 && <section className="fortune-section" aria-labelledby="fortune-title"><div className="fortune-heading"><h3 id="fortune-title">{copy.result.fortuneDirection}</h3><span>{copy.result.fortuneHint}</span></div><div className="fortune-strip">{result.daYun.map((item) => <div key={`${item.ganzhi}-${item.startYear}`}><b>{item.ganzhi}</b><span>{item.startAge}–{item.endAge} {copy.result.year}</span><small>{item.startYear} {copy.result.start}</small></div>)}</div></section>}
           </section>
         </section>
 
         <AnnualManual result={result} input={input} isAuthenticated={isAuthenticated} onRestoreChart={restoreSavedChart} />
-
-        <section className="method-section" id="method" aria-labelledby="method-title">
-          <div className="method-visual">
-            <img src="/manus-storage/guanli-solar-term-diagram_55fe852a.jpg" alt="日行黄道与节气刻度的科学图谱插画" />
-            <span>节气为界 / Solar terms</span>
-          </div>
-          <div className="method-copy">
-            <div className="eyebrow"><BookOpenText /> METHOD / 03</div>
-            <h2 id="method-title">不是“农历生日”，<br />而是<strong>时刻与节气</strong>。</h2>
-            <div className="method-list">
-              <div><span>01</span><p><b>真太阳时修正</b>：以 120°E 为基准，按经度差每度 4 分钟折算地方时差。</p></div>
-              <div><span>02</span><p><b>立春与节令</b>：年柱以立春为分界；月柱随十二节转换，而非随农历初一转换。</p></div>
-              <div><span>03</span><p><b>晚子时处理</b>：当前版本以 23:00 作为换日边界；流派差异应在正式使用前另行核对。</p></div>
-            </div>
-            <a className="reference-link" href="https://github.com/6tail/lunar-javascript" target="_blank" rel="noreferrer">查看所用历法库说明 <ArrowUpRight /></a>
-          </div>
-        </section>
+        <section className="method-section" id="method" aria-labelledby="method-title"><div className="method-visual"><img src="/manus-storage/guanli-solar-term-diagram_55fe852a.jpg" alt="Solar-term diagram" /><span>{locale === "en" ? "SOLAR TERMS" : "节气为界"}</span></div><div className="method-copy"><div className="eyebrow"><BookOpenText /> {copy.method.kicker}</div><h2 id="method-title">{copy.method.titleBefore.split("\n").map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}<strong>{copy.method.titleAccent}</strong>{locale === "en" ? "." : "。"}</h2><div className="method-list"><div><span>01</span><p><b>{copy.method.firstTitle}</b>：{copy.method.firstBody}</p></div><div><span>02</span><p><b>{copy.method.secondTitle}</b>：{copy.method.secondBody}</p></div><div><span>03</span><p><b>{copy.method.thirdTitle}</b>：{copy.method.thirdBody}</p></div></div><a className="reference-link" href="https://github.com/6tail/lunar-javascript" target="_blank" rel="noreferrer">{copy.method.link} <ArrowUpRight /></a></div></section>
       </main>
-
-      <footer className="footer">
-        <div><img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="" /><span>观历 · 一个可核对的四柱排盘界面</span></div>
-        <p>资料性工具，不构成命理解读、医疗、法律、投资或人生决策建议。</p>
-      </footer>
+      <footer className="footer"><div><img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="" /><span>{copy.footer.brand}</span></div><p>{copy.footer.disclaimer}</p></footer>
     </div>
   );
 }

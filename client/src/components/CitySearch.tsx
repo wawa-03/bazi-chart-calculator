@@ -4,6 +4,9 @@
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, MapPinned, Search, X } from "lucide-react";
 import { MapView } from "@/components/Map";
+import { useAppLocale } from "@/contexts/AppLocaleContext";
+import { formatCoordinate } from "@/lib/bazi";
+import { siteCopy } from "@/lib/siteCopy";
 
 export type CityLocation = {
   name: string;
@@ -22,7 +25,26 @@ type Suggestion = {
   secondaryText: string;
 };
 
+type PlaceDetails = {
+  name?: string | null;
+  formatted_address?: string | null;
+  geometry?: { location?: { lat: () => number; lng: () => number } | null } | null;
+};
+
+export function cityLocationFromPlace(suggestion: Suggestion, place?: PlaceDetails | null): CityLocation | null {
+  const point = place?.geometry?.location;
+  if (!point) return null;
+  return {
+    name: place.name || suggestion.primaryText,
+    address: place.formatted_address || suggestion.secondaryText,
+    latitude: point.lat(),
+    longitude: point.lng(),
+  };
+}
+
 export function CitySearch({ onSelect }: CitySearchProps) {
+  const { locale } = useAppLocale();
+  const copy = siteCopy[locale].city;
   const autocomplete = useRef<google.maps.places.AutocompleteService | null>(null);
   const detailService = useRef<google.maps.places.PlacesService | null>(null);
   const [ready, setReady] = useState(false);
@@ -78,14 +100,8 @@ export function CitySearch({ onSelect }: CitySearchProps) {
     detailService.current.getDetails(
       { placeId: suggestion.placeId, fields: ["name", "formatted_address", "geometry"] },
       (place, status) => {
-        const point = place?.geometry?.location;
-        if (status === google.maps.places.PlacesServiceStatus.OK && point) {
-          const location = {
-            name: place.name || suggestion.primaryText,
-            address: place.formatted_address || suggestion.secondaryText,
-            latitude: point.lat(),
-            longitude: point.lng(),
-          };
+        const location = cityLocationFromPlace(suggestion, place);
+        if (status === google.maps.places.PlacesServiceStatus.OK && location) {
           setSelected(location);
           setQuery(location.name);
           setSuggestions([]);
@@ -105,8 +121,8 @@ export function CitySearch({ onSelect }: CitySearchProps) {
   return (
     <div className="city-search">
       <div className="field-head city-field-head">
-        <label className="field-label" htmlFor="birth-city">出生城市</label>
-        <span>{ready ? "地点服务已就绪" : "正在连接地点服务"}</span>
+        <label className="field-label" htmlFor="birth-city">{copy.label}</label>
+        <span>{ready ? copy.ready : copy.connecting}</span>
       </div>
       <div className="city-search-box">
         <Search aria-hidden="true" />
@@ -117,7 +133,7 @@ export function CitySearch({ onSelect }: CitySearchProps) {
           aria-autocomplete="list"
           aria-expanded={suggestions.length > 0}
           aria-controls="city-suggestions"
-          placeholder="输入城市，如北京、上海"
+          placeholder={copy.placeholder}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -130,11 +146,11 @@ export function CitySearch({ onSelect }: CitySearchProps) {
             }
           }}
         />
-        {(isSearching || isSelecting) && <LoaderCircle className="city-spinner" aria-label="正在搜索" />}
-        {!isSearching && !isSelecting && query && <button type="button" onClick={clearSelection} aria-label="清除城市"><X /></button>}
+        {(isSearching || isSelecting) && <LoaderCircle className="city-spinner" aria-label={copy.searching} />}
+        {!isSearching && !isSelecting && query && <button type="button" onClick={clearSelection} aria-label={copy.clear}><X /></button>}
       </div>
       {suggestions.length > 0 && (
-        <div className="city-suggestions" id="city-suggestions" role="listbox" aria-label="城市搜索结果">
+        <div className="city-suggestions" id="city-suggestions" role="listbox" aria-label={copy.results}>
           {suggestions.map((suggestion) => (
             <button type="button" role="option" key={suggestion.placeId} onClick={() => chooseSuggestion(suggestion)}>
               <MapPinned />
@@ -143,7 +159,7 @@ export function CitySearch({ onSelect }: CitySearchProps) {
           ))}
         </div>
       )}
-      {selected && <p className="city-selected"><MapPinned /> 已选 {selected.name} · {selected.latitude.toFixed(4)}°N, {selected.longitude.toFixed(4)}°E</p>}
+      {selected && <p className="city-selected"><MapPinned /> {copy.selected} {selected.name} · {formatCoordinate(selected.latitude)}°, {formatCoordinate(selected.longitude)}°</p>}
       <MapView className="city-search-map-loader" initialCenter={{ lat: 35.8617, lng: 104.1954 }} initialZoom={4} onMapReady={onMapReady} />
     </div>
   );

@@ -22,6 +22,15 @@
   font: 9px/1.5 var(--sans);
 }
 
+.locale-control-note {
+  margin: 0 0 18px;
+  padding: 10px;
+  border-left: 2px solid var(--cinnabar);
+  background: rgba(180, 71, 45, .035);
+  color: #77817b;
+  font: 9px/1.5 var(--sans);
+}
+
 .life-theme-section {
   margin-top: 20px;
   padding-top: 20px;
