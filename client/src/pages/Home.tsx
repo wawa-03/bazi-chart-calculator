@@ -7,9 +7,13 @@ import {
   ArrowUpRight,
   BookOpenText,
   CalendarDays,
+  Check,
   ChevronRight,
   Compass,
+  Copy,
+  Download,
   Info,
+  LoaderCircle,
   MapPin,
   Orbit,
   RotateCcw,
@@ -18,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi } from "@/lib/bazi";
+import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
 
 const DEFAULT_INPUT: BaziInput = {
   datetime: "1990-01-27T00:00",
@@ -76,6 +81,9 @@ export default function Home() {
   const [input, setInput] = useState<BaziInput>(DEFAULT_INPUT);
   const [result, setResult] = useState<BaziResult>(() => calculateBazi(DEFAULT_INPUT));
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  const [exportStatus, setExportStatus] = useState("");
   const correctionPreview = useMemo(() => (Number(input.longitude) - 120) * 4, [input.longitude]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -98,6 +106,32 @@ export default function Home() {
   function handleCitySelect(location: CityLocation) {
     setInput((current) => ({ ...current, longitude: location.longitude, latitude: location.latitude }));
     setError("");
+  }
+
+  async function handlePngExport() {
+    setIsExporting(true);
+    setExportStatus("");
+    try {
+      await downloadBaziPng(result);
+      setExportStatus("PNG 排盘卡片已开始下载。");
+    } catch (exportError) {
+      setExportStatus(exportError instanceof Error ? exportError.message : "PNG 导出未完成，请稍后重试。");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function handleTextCopy() {
+    setIsCopying(true);
+    setExportStatus("正在复制纯文本排盘…");
+    try {
+      await copyBaziPlainText(result);
+      setExportStatus("纯文本排盘已复制到剪贴板。");
+    } catch (copyError) {
+      setExportStatus(copyError instanceof Error ? copyError.message : "纯文本复制未完成，请稍后重试。");
+    } finally {
+      setIsCopying(false);
+    }
   }
 
   return (
@@ -246,6 +280,24 @@ export default function Home() {
               <span className="seal-stamp">已校</span>
               <p><b>排盘规则：</b>{result.dayBoundaryNote} 年、月柱由内置历法的节气时刻界定；月柱按节而非农历月切换。</p>
             </div>
+
+            <section className="export-panel" aria-label="排盘导出">
+              <div className="export-panel-copy">
+                <span>EXPORT / 03</span>
+                <p>导出仅在当前浏览器本地生成，不会上传出生信息。</p>
+              </div>
+              <div className="export-actions">
+                <Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>
+                  {isExporting ? <LoaderCircle className="export-spin" /> : <Download />}
+                  {isExporting ? "正在生成" : "下载 PNG 排盘卡"}
+                </Button>
+                <button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>
+                  {isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("已复制") ? <Check /> : <Copy />}
+                  {isCopying ? "正在复制" : "复制纯文本"}
+                </button>
+              </div>
+              <p className="export-status" aria-live="polite">{exportStatus}</p>
+            </section>
 
             <div className="detail-grid">
               <article className="detail-card solar-card">
