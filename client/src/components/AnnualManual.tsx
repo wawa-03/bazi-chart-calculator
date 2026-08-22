@@ -2,9 +2,10 @@
  * 年度阅读按“引导—正式内容”分层：先给唯一下一步，再按需展开依据、月卷和私有档案。
  */
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, ChevronDown, ChevronRight, Compass, Eye, LockKeyhole, LogIn, Save, ScrollText, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, HeartHandshake, LockKeyhole, LogIn, Save, ScrollText, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
 import "./AnnualManual.css";
 import { startLogin } from "@/const";
+import { deriveLifeThemes, type LifeThemeKey } from "@/lib/lifeThemes";
 import { manualCopy, manualEntry, manualLocales, manualMonth, type ManualLocale } from "@/lib/manualLanguage";
 import { trpc } from "@/lib/trpc";
 import type { BaziInput, BaziResult } from "@/lib/bazi";
@@ -28,6 +29,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const [showArchive, setShowArchive] = useState(false);
   const [storageStatus, setStorageStatus] = useState("");
   const [locale, setLocale] = useState<ManualLocale | null>(null);
+  const [activeTheme, setActiveTheme] = useState<LifeThemeKey>("relationship");
   const archiveUtils = trpc.useUtils();
   const annualWindow = trpc.annual.window.useQuery({ targetYear: profile.year });
   const localeQuery = trpc.locale.current.useQuery();
@@ -55,6 +57,9 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const profileName = profile.name.trim() || "未署名";
   const dayPillar = result.pillars.find((pillar) => pillar.key === "day")?.ganzhi || "日柱";
   const activeEntry = activeMonth === null ? undefined : manualEntry(selectedLocale, activeMonth);
+  const themes = useMemo(() => deriveLifeThemes(result, selectedLocale), [result, selectedLocale]);
+  const selectedTheme = themes.find((theme) => theme.key === activeTheme) || themes[0];
+  const themeIcons = { relationship: HeartHandshake, career: BriefcaseBusiness, finance: WalletCards, rhythm: TimerReset } as const;
 
   useEffect(() => {
     if (started && activeMonth === null && annualAccess?.openMonths[0]) {
@@ -157,6 +162,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
             <>
               <header className="focus-reading-head"><div><span>{copy.prepared.replace("{name}", profileName)}</span><h3>{profile.year} {copy.future}</h3></div><p><b>{copy.nextJie}: {annualAccess?.nextJie || "…"}</b> · {copy.onlyFuture}</p></header>
               {activeEntry && activeMonth !== null && <article className="focus-reading-card" aria-live="polite"><div className="focus-reading-meta"><span>{copy.first} / {profile.year}</span><b>{manualMonth(selectedLocale, activeMonth)}</b></div><h4>{activeEntry.title}</h4><p className="focus-personal-line">{selectedLocale === "en" ? <>This volume uses your <strong>{dayPillar}</strong> day pillar, corrected birth time, and the next solar term <strong>{annualAccess?.nextJie || ""}</strong> as reading coordinates.</> : <>这卷以你的<strong>{dayPillar}</strong>日柱、已校正的出生时刻与下一节<strong>{annualAccess?.nextJie || ""}</strong>作为阅读坐标。先只处理一个问题。</>}</p><section><span>{copy.cue}</span><p>{activeEntry.focus}</p></section><section><span>{copy.question}</span><p>{activeEntry.prompt}</p></section><section><span>{copy.action}</span><p>{activeEntry.note}</p></section><p className="monthly-disclaimer">{selectedLocale === "en" ? "This is a cultural-research reading prompt, not a certain prediction or life-decision recommendation." : "这是结合你当前排盘与时间窗口的文化研究阅读提示，不构成对未来的确定判断或人生决策建议。"}</p></article>}
+              {selectedTheme && <section className="life-theme-section" aria-labelledby="life-theme-title"><header><span>{selectedLocale === "en" ? "PERSONAL THEMES" : "人生主题"}</span><h4 id="life-theme-title">{selectedLocale === "en" ? "Choose one area to explore" : "选择一个想先看的方向"}</h4><p>{selectedLocale === "en" ? "These are reflective prompts linked to visible markers in your chart—not forecasts of outcomes." : "这些是与排盘可见标记关联的反思线索，不是对结果的预言。"}</p></header><div className="life-theme-tabs" role="tablist" aria-label={selectedLocale === "en" ? "Life themes" : "人生主题"}>{themes.map((theme) => { const Icon = themeIcons[theme.key]; return <button key={theme.key} type="button" role="tab" aria-selected={theme.key === activeTheme} className={theme.key === activeTheme ? "is-active" : ""} onClick={() => setActiveTheme(theme.key)}><Icon /><span>{theme.title}</span></button>; })}</div><article className="life-theme-card" role="tabpanel"><div className="life-theme-card-head"><span>{selectedTheme.label}</span><b>{selectedTheme.title}</b></div><p className="life-theme-focus">{selectedTheme.focus}</p><dl><div><dt>{selectedLocale === "en" ? "A question" : "一个问题"}</dt><dd>{selectedTheme.question}</dd></div><div><dt>{selectedLocale === "en" ? "A small action" : "一个小行动"}</dt><dd>{selectedTheme.action}</dd></div></dl><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the chart index for this theme" : "查看此主题的排盘索引"}</summary><p>{selectedTheme.evidence}</p></details><p className="life-theme-boundary">{selectedTheme.boundary}</p></article></section>}
               <div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button></div>
               {showMonthPicker && <div className="future-month-picker" role="list" aria-label={copy.future}>{Array.from({ length: 12 }, (_, index) => index).map((index) => { const isOpen = Boolean(annualAccess?.openMonths.includes(index + 1)); return <button key={index} type="button" role="listitem" disabled={!isOpen} className={activeMonth === index ? "is-active" : ""} onClick={() => setActiveMonth(index)}><span>{String(index + 1).padStart(2, "0")}</span><b>{manualMonth(selectedLocale, index)}</b>{isOpen ? <Eye /> : <LockKeyhole />}</button>; })}</div>}
               <details className="reading-details"><summary><ChevronDown /> {copy.basis}</summary><div><p><b>服务端节气窗口：</b>使用 {annualAccess?.timezone || "北京时间"} 计算；下一节为“{annualAccess?.nextJie || "校验中"}”，当前可读 {annualAccess?.openMonths.length || 0} 卷。</p><p><b>你的排盘信息：</b>日柱 {dayPillar}，用于排盘时刻 {result.correctedTime}。{profile.birthPlace ? `出生地点：${profile.birthPlace}。` : ""}</p></div></details>

@@ -21,3 +21,85 @@
   color: #77817b;
   font: 9px/1.5 var(--sans);
 }
+
+.life-theme-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #d6cec1;
+}
+
+.life-theme-section header > span,
+.life-theme-card-head > span {
+  color: var(--cinnabar);
+  font: 500 9px/1 var(--mono);
+  letter-spacing: .1em;
+}
+
+.life-theme-section h4 {
+  margin: 8px 0 5px;
+  color: #263937;
+  font: 800 22px/1.2 var(--serif);
+}
+
+.life-theme-section header > p {
+  max-width: 540px;
+  margin: 0;
+  color: #6d7771;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.life-theme-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  margin-top: 14px;
+  background: #d5cbbb;
+}
+
+.life-theme-tabs button {
+  display: grid;
+  min-height: 78px;
+  align-content: center;
+  justify-items: center;
+  gap: 7px;
+  border: 0;
+  background: rgba(249, 247, 240, .94);
+  color: #64716b;
+  font: 600 10px/1.25 var(--sans);
+  cursor: pointer;
+}
+
+.life-theme-tabs button:hover,
+.life-theme-tabs button.is-active {
+  background: rgba(180, 71, 45, .09);
+  color: var(--cinnabar-dark);
+}
+
+.life-theme-tabs svg { width: 17px; stroke-width: 1.35; }
+
+.life-theme-card {
+  margin-top: 11px;
+  padding: 17px;
+  border-left: 2px solid var(--cinnabar);
+  background: rgba(180, 71, 45, .035);
+}
+
+.life-theme-card-head { display: grid; gap: 6px; }
+.life-theme-card-head b { color: #263937; font: 800 24px/1.1 var(--serif); }
+.life-theme-focus { margin: 12px 0 16px; color: #42504b; font: 700 14px/1.7 var(--serif); }
+.life-theme-card dl { display: grid; gap: 11px; margin: 0; }
+.life-theme-card dl div { padding-top: 10px; border-top: 1px solid #ddd4c8; }
+.life-theme-card dt { color: #7c8780; font: 500 9px var(--mono); letter-spacing: .06em; }
+.life-theme-card dd { margin: 5px 0 0; color: #56635e; font: 11px/1.7 var(--sans); }
+.life-theme-card details { margin-top: 14px; border-top: 1px solid #ddd4c8; }
+.life-theme-card summary { display: flex; align-items: center; gap: 6px; padding-top: 11px; color: #66736d; font: 600 10px var(--sans); cursor: pointer; list-style: none; }
+.life-theme-card summary::-webkit-details-marker { display: none; }
+.life-theme-card summary svg { width: 13px; color: var(--cinnabar); }
+.life-theme-card details p { margin: 7px 0 0; color: #727b75; font: 10px/1.6 var(--sans); }
+.life-theme-boundary { margin: 14px 0 0; color: #8a8d86; font: 9px/1.55 var(--sans); }
+
+@media (max-width: 760px) {
+  .life-theme-tabs { grid-template-columns: repeat(2, 1fr); }
+  .life-theme-tabs button { min-height: 62px; grid-template-columns: auto 1fr; grid-template-rows: 1fr; align-items: center; justify-content: center; column-gap: 8px; }
+}
