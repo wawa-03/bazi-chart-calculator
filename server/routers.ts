@@ -2,8 +2,10 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createSavedArchive, deleteSavedArchive, listSavedArchives } from "./db";
+import { createSavedArchive, deleteSavedArchive, listSavedArchives, setUserLanguagePreference } from "./db";
+import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
+import { resolveRequestLocale, supportedLocales } from "./locale";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const archivePayloadSchema = z.object({
@@ -46,6 +48,13 @@ export const appRouter = router({
   annual: router({
     window: publicProcedure.input(z.object({ targetYear: z.number().int().min(1900).max(2200) })).query(({ input }) =>
       getAnnualWindow(input.targetYear),
+    ),
+    method: publicProcedure.query(() => annualMethod),
+  }),
+  locale: router({
+    current: publicProcedure.query(({ ctx }) => resolveRequestLocale(ctx.req.headers, ctx.user?.languagePreference)),
+    set: protectedProcedure.input(z.object({ locale: z.enum(supportedLocales) })).mutation(({ ctx, input }) =>
+      setUserLanguagePreference(ctx.user.id, input.locale),
     ),
   }),
 });

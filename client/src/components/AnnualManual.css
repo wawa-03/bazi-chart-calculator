@@ -1,0 +1,23 @@
+.locale-control {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 15px;
+  padding: 10px;
+  border-left: 2px solid var(--cinnabar);
+  background: rgba(180, 71, 45, .035);
+}
+
+.locale-control label {
+  margin: 0;
+  color: #58665f;
+}
+
+.locale-control select {
+  height: 35px;
+  font-size: 11px;
+}
+
+.locale-control small {
+  color: #77817b;
+  font: 9px/1.5 var(--sans);
+}

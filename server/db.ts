@@ -104,6 +104,13 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function setUserLanguagePreference(userId: number, locale: string) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  await db.update(users).set({ languagePreference: locale }).where(eq(users.id, userId));
+  return { locale };
+}
+
 export async function createSavedArchive(userId: number, payload: ArchivePayload) {
   const db = await getDb();
   if (!db) throw new Error("数据库暂不可用，请稍后重试。");

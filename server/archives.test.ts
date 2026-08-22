@@ -5,13 +5,14 @@ const dbMocks = vi.hoisted(() => ({
   createSavedArchive: vi.fn(),
   deleteSavedArchive: vi.fn(),
   listSavedArchives: vi.fn(),
+  setUserLanguagePreference: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
 
 import { appRouter } from "./routers";
 
-function contextFor(userId: number): TrpcContext {
+function contextFor(userId: number, headers: Record<string, string> = {}): TrpcContext {
   return {
     user: {
       id: userId,
@@ -19,12 +20,13 @@ function contextFor(userId: number): TrpcContext {
       email: null,
       name: "测试用户",
       loginMethod: "manus",
+      languagePreference: null,
       role: "user",
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
     },
-    req: {} as TrpcContext["req"],
+    req: { headers } as TrpcContext["req"],
     res: {} as TrpcContext["res"],
   };
 }
@@ -54,5 +56,15 @@ describe("archives router", () => {
     const caller = appRouter.createCaller(contextFor(42));
     await caller.archives.remove({ id: 7 });
     expect(dbMocks.deleteSavedArchive).toHaveBeenCalledWith(42, 7);
+  });
+
+  it("uses edge country for a display default and persists only an explicit language override", async () => {
+    dbMocks.setUserLanguagePreference.mockResolvedValue({ locale: "en" });
+    const caller = appRouter.createCaller(contextFor(42, { "cf-ipcountry": "TW", "x-forwarded-for": "203.0.113.9" }));
+
+    expect(await caller.locale.current()).toEqual({ locale: "zh-TW", source: "edge-country" });
+    await caller.locale.set({ locale: "en" });
+
+    expect(dbMocks.setUserLanguagePreference).toHaveBeenCalledWith(42, "en");
   });
 });
