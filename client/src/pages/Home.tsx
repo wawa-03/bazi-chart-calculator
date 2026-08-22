@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnnualManual } from "@/components/AnnualManual";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi } from "@/lib/bazi";
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
@@ -143,6 +144,7 @@ export default function Home() {
         </a>
         <nav aria-label="页面导航">
           <a href="#calculator">起盘 <ChevronRight /></a>
+          <a href="#manual">年卷 <ChevronRight /></a>
           <a href="#method">依据 <ChevronRight /></a>
         </nav>
         <div className="local-status"><i /> 浏览器本地推算</div>
@@ -330,6 +332,8 @@ export default function Home() {
             )}
           </section>
         </section>
+
+        <AnnualManual result={result} />
 
         <section className="method-section" id="method" aria-labelledby="method-title">
           <div className="method-visual">
