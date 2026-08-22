@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createSavedArchive, deleteSavedArchive, listSavedArchives, setUserLanguagePreference } from "./db";
+import { createSavedArchive, deleteSavedArchive, deleteThemeNote, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
 import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
@@ -11,8 +11,8 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 const archivePayloadSchema = z.object({
   input: z.object({
     datetime: z.string().min(16).max(32),
-    longitude: z.number().min(73).max(136),
-    latitude: z.number().min(3).max(54),
+    longitude: z.number().min(-180).max(180),
+    latitude: z.number().min(-90).max(90),
     gender: z.enum(["male", "female"]),
   }),
   profile: z.object({
@@ -44,6 +44,20 @@ export const appRouter = router({
     remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) =>
       deleteSavedArchive(ctx.user.id, input.id),
     ),
+  }),
+  themeNotes: router({
+    list: protectedProcedure.input(z.object({ archiveId: z.number().int().positive() })).query(({ ctx, input }) =>
+      listThemeNotes(ctx.user.id, input.archiveId),
+    ),
+    save: protectedProcedure.input(z.object({
+      archiveId: z.number().int().positive(),
+      themeKey: z.enum(["relationship", "career", "finance", "rhythm"]),
+      content: z.string().trim().min(1).max(2000),
+    })).mutation(({ ctx, input }) => saveThemeNote(ctx.user.id, input.archiveId, input.themeKey, input.content)),
+    remove: protectedProcedure.input(z.object({
+      archiveId: z.number().int().positive(),
+      themeKey: z.enum(["relationship", "career", "finance", "rhythm"]),
+    })).mutation(({ ctx, input }) => deleteThemeNote(ctx.user.id, input.archiveId, input.themeKey)),
   }),
   annual: router({
     window: publicProcedure.input(z.object({ targetYear: z.number().int().min(1900).max(2200) })).query(({ input }) =>

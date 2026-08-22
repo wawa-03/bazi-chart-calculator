@@ -1,4 +1,4 @@
-import { index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -47,3 +47,22 @@ export const savedArchives = mysqlTable("savedArchives", {
 
 export type SavedArchive = typeof savedArchives.$inferSelect;
 export type InsertSavedArchive = typeof savedArchives.$inferInsert;
+
+/**
+ * A short personal reflection attached to one saved archive and one displayed
+ * life theme. Ownership is duplicated deliberately for query isolation.
+ */
+export const themeNotes = mysqlTable("themeNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  archiveId: int("archiveId").notNull().references(() => savedArchives.id, { onDelete: "cascade" }),
+  themeKey: varchar("themeKey", { length: 24 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("theme_notes_owner_archive_theme_idx").on(table.userId, table.archiveId, table.themeKey),
+  index("theme_notes_owner_updated_idx").on(table.userId, table.updatedAt),
+]);
+
+export type ThemeNote = typeof themeNotes.$inferSelect;

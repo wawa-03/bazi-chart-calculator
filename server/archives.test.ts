@@ -4,7 +4,10 @@ import type { TrpcContext } from "./_core/context";
 const dbMocks = vi.hoisted(() => ({
   createSavedArchive: vi.fn(),
   deleteSavedArchive: vi.fn(),
+  deleteThemeNote: vi.fn(),
   listSavedArchives: vi.fn(),
+  listThemeNotes: vi.fn(),
+  saveThemeNote: vi.fn(),
   setUserLanguagePreference: vi.fn(),
 }));
 
@@ -56,6 +59,21 @@ describe("archives router", () => {
     const caller = appRouter.createCaller(contextFor(42));
     await caller.archives.remove({ id: 7 });
     expect(dbMocks.deleteSavedArchive).toHaveBeenCalledWith(42, 7);
+  });
+
+  it("scopes theme-note save, list, and removal to the authenticated archive owner", async () => {
+    dbMocks.listThemeNotes.mockResolvedValue([]);
+    dbMocks.saveThemeNote.mockResolvedValue({ id: 1, content: "本周回顾" });
+    dbMocks.deleteThemeNote.mockResolvedValue({ deleted: true });
+    const caller = appRouter.createCaller(contextFor(42));
+
+    await caller.themeNotes.list({ archiveId: 7 });
+    await caller.themeNotes.save({ archiveId: 7, themeKey: "career", content: "本周回顾" });
+    await caller.themeNotes.remove({ archiveId: 7, themeKey: "career" });
+
+    expect(dbMocks.listThemeNotes).toHaveBeenCalledWith(42, 7);
+    expect(dbMocks.saveThemeNote).toHaveBeenCalledWith(42, 7, "career", "本周回顾");
+    expect(dbMocks.deleteThemeNote).toHaveBeenCalledWith(42, 7, "career");
   });
 
   it("uses edge country for a display default and persists only an explicit language override", async () => {

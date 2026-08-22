@@ -2,12 +2,14 @@
  * 年度阅读按“引导—正式内容”分层：先给唯一下一步，再按需展开依据、月卷和私有档案。
  */
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, HeartHandshake, LockKeyhole, LogIn, Save, ScrollText, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
+import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, FileDown, HeartHandshake, LockKeyhole, LogIn, NotebookPen, Save, ScrollText, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
 import "./AnnualManual.css";
 import { startLogin } from "@/const";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
+import { deriveFortuneContrast } from "@/lib/fortuneContrast";
 import { deriveLifeThemes, type LifeThemeKey } from "@/lib/lifeThemes";
 import { manualCopy, manualEntry, manualMonth } from "@/lib/manualLanguage";
+import { downloadThemeReport } from "@/lib/themeReport";
 import { trpc } from "@/lib/trpc";
 import type { BaziInput, BaziResult } from "@/lib/bazi";
 
@@ -38,12 +40,17 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const [showArchive, setShowArchive] = useState(false);
   const [storageStatus, setStorageStatus] = useState("");
   const [activeTheme, setActiveTheme] = useState<LifeThemeKey>("relationship");
+  const [activeArchiveId, setActiveArchiveId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
   const archiveUtils = trpc.useUtils();
   const annualWindow = trpc.annual.window.useQuery({ targetYear: profile.year });
   const annualMethod = trpc.annual.method.useQuery();
   const archivesQuery = trpc.archives.list.useQuery(undefined, { enabled: isAuthenticated && showArchive });
+  const noteQueryInput = useMemo(() => ({ archiveId: activeArchiveId ?? 0 }), [activeArchiveId]);
+  const notesQuery = trpc.themeNotes.list.useQuery(noteQueryInput, { enabled: isAuthenticated && activeArchiveId !== null });
   const saveArchive = trpc.archives.save.useMutation({
-    onSuccess: () => {
+    onSuccess: (record) => {
+      setActiveArchiveId(record.id);
       setStorageStatus("已保存至仅自己可见的私有档案。");
       archiveUtils.archives.list.invalidate();
     },
@@ -51,10 +58,26 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   });
   const removeArchive = trpc.archives.remove.useMutation({
     onSuccess: () => {
+      setActiveArchiveId(null);
       setStorageStatus("记录及其中的住址资料已永久删除。");
       archiveUtils.archives.list.invalidate();
     },
     onError: (error) => setStorageStatus(error.message || "删除未完成，请稍后重试。"),
+  });
+  const saveThemeNote = trpc.themeNotes.save.useMutation({
+    onSuccess: () => {
+      setStorageStatus("主题回顾已保存至此命书的私有笔记。");
+      archiveUtils.themeNotes.list.invalidate(noteQueryInput);
+    },
+    onError: (error) => setStorageStatus(error.message || "主题笔记未保存，请稍后重试。"),
+  });
+  const removeThemeNote = trpc.themeNotes.remove.useMutation({
+    onSuccess: () => {
+      setNoteDraft("");
+      setStorageStatus("该主题回顾笔记已删除。");
+      archiveUtils.themeNotes.list.invalidate(noteQueryInput);
+    },
+    onError: (error) => setStorageStatus(error.message || "主题笔记未删除，请稍后重试。"),
   });
 
   const annualAccess = annualWindow.data;
@@ -64,6 +87,8 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const activeEntry = activeMonth === null ? undefined : manualEntry(selectedLocale, activeMonth);
   const themes = useMemo(() => deriveLifeThemes(result, selectedLocale), [result, selectedLocale]);
   const selectedTheme = themes.find((theme) => theme.key === activeTheme) || themes[0];
+  const fortuneContrast = useMemo(() => deriveFortuneContrast(result, profile.year, selectedLocale), [profile.year, result, selectedLocale]);
+  const savedNote = notesQuery.data?.find((note) => note.themeKey === activeTheme);
   const themeIcons = { relationship: HeartHandshake, career: BriefcaseBusiness, finance: WalletCards, rhythm: TimerReset } as const;
 
   useEffect(() => {
@@ -71,6 +96,10 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
       setActiveMonth(annualAccess.openMonths[0] - 1);
     }
   }, [activeMonth, annualAccess?.openMonths, started]);
+
+  useEffect(() => {
+    setNoteDraft(savedNote?.content || "");
+  }, [activeTheme, savedNote?.content]);
 
   async function beginReading(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,6 +110,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
       return;
     }
     setStarted(true);
+    setActiveArchiveId(null);
     setActiveMonth(access.openMonths[0] - 1);
     setShowMonthPicker(false);
     globalThis.window.setTimeout(() => document.getElementById("manual-reading")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
@@ -95,7 +125,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     saveArchive.mutate({ input, profile });
   }
 
-  function restoreArchive(record: { inputJson: string; profileJson: string }) {
+  function restoreArchive(record: { id: number; inputJson: string; profileJson: string }) {
     try {
       const savedInput = JSON.parse(record.inputJson) as BaziInput;
       const savedProfile = JSON.parse(record.profileJson) as ArchiveProfile;
@@ -104,11 +134,44 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
       setStarted(true);
       setActiveMonth(null);
       setShowMonthPicker(false);
+      setActiveArchiveId(record.id);
       setStorageStatus("已载入私有档案；未向其他用户展示资料。");
       onRestoreChart(savedInput);
     } catch {
       setStorageStatus("该记录格式不完整，无法恢复。你可以将其删除后重新保存。");
     }
+  }
+
+  function saveCurrentThemeNote() {
+    if (!isAuthenticated) return startLogin();
+    if (!activeArchiveId) {
+      setStorageStatus("请先保存或载入这份命书，再为主题写下私有回顾。");
+      return;
+    }
+    const content = noteDraft.trim();
+    if (!content) {
+      setStorageStatus("先写下一句回顾，再保存主题笔记。 ");
+      return;
+    }
+    saveThemeNote.mutate({ archiveId: activeArchiveId, themeKey: activeTheme, content });
+  }
+
+  function exportCurrentThemeReport() {
+    if (!activeArchiveId) {
+      setStorageStatus("完整主题报告只针对已保存或已载入的命书生成。 ");
+      return;
+    }
+    downloadThemeReport({
+      archiveId: activeArchiveId,
+      profile: { name: profile.name, birthPlace: profile.birthPlace, year: profile.year },
+      result,
+      locale: selectedLocale,
+      openMonths: annualAccess?.openMonths || [],
+      themes,
+      contrast: fortuneContrast,
+      notes: notesQuery.data || [],
+    });
+    setStorageStatus("完整主题报告已在当前浏览器生成下载；详细住址不会写入报告。 ");
   }
 
   return (
@@ -149,13 +212,14 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
 
         <div className="manual-reading" id="manual-reading">
           {!started ? (
-            <div className="manual-empty-state focus-empty-state"><Compass /><div><span>{ui.emptyKicker}</span><h3>{ui.emptyTitle}</h3><p>{ui.emptyBody}</p></div></div>
+            <div className="manual-empty-state focus-empty-state"><Compass /><div><span>{ui.emptyKicker}</span><h3>{ui.emptyTitle}</h3><p>{ui.emptyBody}</p><p className="theme-entry-note"><NotebookPen /> {selectedLocale === "en" ? "After you begin the next volume, Relationship, Work, Money, and Daily rhythm appear directly below that monthly reading." : "开始下一卷后，关系与亲密、事业与路径、财务与资源、生活节奏会显示在该月卷下方。"}</p></div></div>
           ) : (
             <>
               <header className="focus-reading-head"><div><span>{copy.prepared.replace("{name}", profileName)}</span><h3>{profile.year} {copy.future}</h3></div><p><b>{copy.nextJie}: {annualAccess?.nextJie || "…"}</b> · {copy.onlyFuture}</p></header>
               {activeEntry && activeMonth !== null && <article className="focus-reading-card" aria-live="polite"><div className="focus-reading-meta"><span>{copy.first} / {profile.year}</span><b>{manualMonth(selectedLocale, activeMonth)}</b></div><h4>{activeEntry.title}</h4><p className="focus-personal-line">{selectedLocale === "en" ? <>This volume uses your <strong>{dayPillar}</strong> day pillar, corrected birth time, and the next solar term <strong>{annualAccess?.nextJie || ""}</strong> as reading coordinates.</> : <>这卷以你的<strong>{dayPillar}</strong>日柱、已校正的出生时刻与下一节<strong>{annualAccess?.nextJie || ""}</strong>作为阅读坐标。先只处理一个问题。</>}</p><section><span>{copy.cue}</span><p>{activeEntry.focus}</p></section><section><span>{copy.question}</span><p>{activeEntry.prompt}</p></section><section><span>{copy.action}</span><p>{activeEntry.note}</p></section><p className="monthly-disclaimer">{selectedLocale === "en" ? "This is a cultural-research reading prompt, not a certain prediction or life-decision recommendation." : "这是结合你当前排盘与时间窗口的文化研究阅读提示，不构成对未来的确定判断或人生决策建议。"}</p></article>}
-              {selectedTheme && <section className="life-theme-section" aria-labelledby="life-theme-title"><header><span>{selectedLocale === "en" ? "PERSONAL THEMES" : "人生主题"}</span><h4 id="life-theme-title">{selectedLocale === "en" ? "Choose one area to explore" : "选择一个想先看的方向"}</h4><p>{selectedLocale === "en" ? "These are reflective prompts linked to visible markers in your chart—not forecasts of outcomes." : "这些是与排盘可见标记关联的反思线索，不是对结果的预言。"}</p></header><div className="life-theme-tabs" role="tablist" aria-label={selectedLocale === "en" ? "Life themes" : "人生主题"}>{themes.map((theme) => { const Icon = themeIcons[theme.key]; return <button key={theme.key} type="button" role="tab" aria-selected={theme.key === activeTheme} className={theme.key === activeTheme ? "is-active" : ""} onClick={() => setActiveTheme(theme.key)}><Icon /><span>{theme.title}</span></button>; })}</div><article className="life-theme-card" role="tabpanel"><div className="life-theme-card-head"><span>{selectedTheme.label}</span><b>{selectedTheme.title}</b></div><p className="life-theme-focus">{selectedTheme.focus}</p><dl><div><dt>{selectedLocale === "en" ? "A question" : "一个问题"}</dt><dd>{selectedTheme.question}</dd></div><div><dt>{selectedLocale === "en" ? "A small action" : "一个小行动"}</dt><dd>{selectedTheme.action}</dd></div></dl><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the chart index for this theme" : "查看此主题的排盘索引"}</summary><p>{selectedTheme.evidence}</p></details><p className="life-theme-boundary">{selectedTheme.boundary}</p></article></section>}
-              <div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button></div>
+              <section className="fortune-contrast-card" aria-labelledby="fortune-contrast-title"><div><span>{selectedLocale === "en" ? "LONGER CONTEXT" : "延展对照"}</span><h4 id="fortune-contrast-title">{fortuneContrast.title}</h4></div><dl><div><dt>{selectedLocale === "en" ? "Da Yun" : "大运"}</dt><dd>{fortuneContrast.activeDaYun?.ganzhi || "—"}</dd></div><div><dt>{selectedLocale === "en" ? "Flow year" : "流年"}</dt><dd>{fortuneContrast.flowYear}</dd></div></dl><p>{fortuneContrast.focus}</p><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the contrast index" : "查看对照索引"}</summary><p>{fortuneContrast.evidence}</p></details><p className="life-theme-boundary">{fortuneContrast.boundary}</p></section>
+              {selectedTheme && <section className="life-theme-section" id="life-themes" aria-labelledby="life-theme-title"><header><span>{selectedLocale === "en" ? "PERSONAL THEMES" : "人生主题 / 在未来月卷下方"}</span><h4 id="life-theme-title">{selectedLocale === "en" ? "Choose one area to explore" : "选择一个想先看的方向"}</h4><p>{selectedLocale === "en" ? "These are reflective prompts linked to visible markers in your chart—not forecasts of outcomes." : "这些是与排盘可见标记关联的反思线索，不是对结果的预言。"}</p></header><div className="life-theme-tabs" role="tablist" aria-label={selectedLocale === "en" ? "Life themes" : "人生主题"}>{themes.map((theme) => { const Icon = themeIcons[theme.key]; return <button key={theme.key} type="button" role="tab" aria-selected={theme.key === activeTheme} className={theme.key === activeTheme ? "is-active" : ""} onClick={() => setActiveTheme(theme.key)}><Icon /><span>{theme.title}</span></button>; })}</div><article className="life-theme-card" role="tabpanel"><div className="life-theme-card-head"><span>{selectedTheme.label}</span><b>{selectedTheme.title}</b></div><p className="life-theme-focus">{selectedTheme.focus}</p><dl><div><dt>{selectedLocale === "en" ? "A question" : "一个问题"}</dt><dd>{selectedTheme.question}</dd></div><div><dt>{selectedLocale === "en" ? "A small action" : "一个小行动"}</dt><dd>{selectedTheme.action}</dd></div></dl><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the chart index for this theme" : "查看此主题的排盘索引"}</summary><p>{selectedTheme.evidence}</p></details><p className="life-theme-boundary">{selectedTheme.boundary}</p><section className="theme-note-editor"><header><NotebookPen /><div><b>{selectedLocale === "en" ? "Private reflection" : "私有主题回顾"}</b><p>{activeArchiveId ? (selectedLocale === "en" ? "This note belongs only to the currently saved reading." : "这条笔记只属于当前已保存的命书。") : (selectedLocale === "en" ? "Save or load this reading before adding a private note." : "请先保存或载入这份命书，再写下私有笔记。")}</p></div></header>{isAuthenticated ? <><textarea value={noteDraft} maxLength={2000} placeholder={selectedLocale === "en" ? "Write a short reflection…" : "写下这一次阅读后的回顾…"} onChange={(event) => setNoteDraft(event.target.value)} disabled={!activeArchiveId} /><div><button type="button" onClick={saveCurrentThemeNote} disabled={!activeArchiveId || saveThemeNote.isPending}><Save /> {selectedLocale === "en" ? "Save reflection" : "保存回顾"}</button>{savedNote && <button type="button" className="quiet" onClick={() => activeArchiveId && removeThemeNote.mutate({ archiveId: activeArchiveId, themeKey: activeTheme })} disabled={removeThemeNote.isPending}><Trash2 /> {selectedLocale === "en" ? "Delete" : "删除"}</button>}</div></> : <button type="button" onClick={startLogin}><LogIn /> {selectedLocale === "en" ? "Log in to save a reflection" : "登录后保存主题回顾"}</button>}</section></article></section>}
+              <div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button>{isAuthenticated && <button type="button" className="quiet-action" onClick={exportCurrentThemeReport} disabled={!activeArchiveId}><FileDown /> {selectedLocale === "en" ? "Export full theme report" : "导出完整主题报告"}</button>}</div>
               {showMonthPicker && <div className="future-month-picker" role="list" aria-label={copy.future}>{Array.from({ length: 12 }, (_, index) => index).map((index) => { const isOpen = Boolean(annualAccess?.openMonths.includes(index + 1)); return <button key={index} type="button" role="listitem" disabled={!isOpen} className={activeMonth === index ? "is-active" : ""} onClick={() => setActiveMonth(index)}><span>{String(index + 1).padStart(2, "0")}</span><b>{manualMonth(selectedLocale, index)}</b>{isOpen ? <Eye /> : <LockKeyhole />}</button>; })}</div>}
               <details className="reading-details"><summary><ChevronDown /> {copy.basis}</summary><div><p><b>服务端节气窗口：</b>使用 {annualAccess?.timezone || "北京时间"} 计算；下一节为“{annualAccess?.nextJie || "校验中"}”，当前可读 {annualAccess?.openMonths.length || 0} 卷。</p><p><b>你的排盘信息：</b>日柱 {dayPillar}，用于排盘时刻 {result.correctedTime}。{profile.birthPlace ? `出生地点：${profile.birthPlace}。` : ""}</p></div></details>
               <details className="reading-details"><summary><ChevronDown /> {copy.method}</summary><div><p><b>{copy.source}：</b>{annualMethod.data?.calendarLibrary || "lunar-javascript"}；版本 {annualMethod.data?.version || "校验中"}。</p><p>{annualMethod.data?.annualWindow}</p><p>{annualMethod.data?.contentGeneration}</p><p>{annualMethod.data?.limitation}</p></div></details>

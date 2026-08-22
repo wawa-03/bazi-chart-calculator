@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertSavedArchive, InsertUser, savedArchives, users } from "../drizzle/schema";
+import { InsertSavedArchive, InsertUser, savedArchives, themeNotes, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 export type ArchivePayload = {
@@ -144,5 +144,36 @@ export async function deleteSavedArchive(userId: number, id: number) {
   if (!db) throw new Error("数据库暂不可用，请稍后重试。");
   const result = await db.delete(savedArchives)
     .where(and(eq(savedArchives.id, id), eq(savedArchives.userId, userId)));
+  return { deleted: result[0].affectedRows > 0 };
+}
+
+export async function listThemeNotes(userId: number, archiveId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  return db.select().from(themeNotes)
+    .where(and(eq(themeNotes.userId, userId), eq(themeNotes.archiveId, archiveId)))
+    .orderBy(desc(themeNotes.updatedAt));
+}
+
+export async function saveThemeNote(userId: number, archiveId: number, themeKey: string, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  await db.insert(themeNotes).values({ userId, archiveId, themeKey, content }).onDuplicateKeyUpdate({
+    set: { content, updatedAt: new Date() },
+  });
+  const saved = await db.select().from(themeNotes)
+    .where(and(eq(themeNotes.userId, userId), eq(themeNotes.archiveId, archiveId), eq(themeNotes.themeKey, themeKey)))
+    .limit(1);
+  return saved[0];
+}
+
+export async function deleteThemeNote(userId: number, archiveId: number, themeKey: string) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  const result = await db.delete(themeNotes).where(and(
+    eq(themeNotes.userId, userId),
+    eq(themeNotes.archiveId, archiveId),
+    eq(themeNotes.themeKey, themeKey),
+  ));
   return { deleted: result[0].affectedRows > 0 };
 }
