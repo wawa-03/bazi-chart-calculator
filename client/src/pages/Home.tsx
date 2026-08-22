@@ -1,7 +1,7 @@
 /**
  * 观象历书设计提醒：以“卷首—侧注—版心”布局呈现，强调历法依据与可追溯性，避免命运承诺式表述。
  */
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { AnnualManual } from "@/components/AnnualManual";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi } from "@/lib/bazi";
@@ -79,9 +80,16 @@ function PillarCard({ pillar, index }: { pillar: BaziResult["pillars"][number]; 
 }
 
 export default function Home() {
+  // The useAuth hook provides authentication state.
+  // To implement login/logout, call logout(), or start login from an event
+  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
+  // startLogin() during render (no href={startLogin()}) — it mints a one-time
+  // nonce cookie and must run only at the moment of navigation.
+  const { isAuthenticated } = useAuth();
+
   const [input, setInput] = useState<BaziInput>(DEFAULT_INPUT);
   const [result, setResult] = useState<BaziResult>(() => calculateBazi(DEFAULT_INPUT));
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
@@ -91,23 +99,34 @@ export default function Home() {
     event.preventDefault();
     try {
       setResult(calculateBazi({ ...input, longitude: Number(input.longitude) }));
-      setError("");
+      setFormError("");
       window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
     } catch (calculationError) {
-      setError(calculationError instanceof Error ? calculationError.message : "无法完成本次推算，请核对输入。");
+      setFormError(calculationError instanceof Error ? calculationError.message : "无法完成本次推算，请核对输入。");
     }
   }
 
   function restoreExample() {
     setInput(DEFAULT_INPUT);
     setResult(calculateBazi(DEFAULT_INPUT));
-    setError("");
+    setFormError("");
   }
 
   function handleCitySelect(location: CityLocation) {
     setInput((current) => ({ ...current, longitude: location.longitude, latitude: location.latitude }));
-    setError("");
+    setFormError("");
   }
+
+  const restoreSavedChart = useCallback((savedInput: BaziInput) => {
+    try {
+      setInput(savedInput);
+      setResult(calculateBazi(savedInput));
+      setFormError("");
+      window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+    } catch (calculationError) {
+      setFormError(calculationError instanceof Error ? calculationError.message : "保存的排盘资料无法恢复。");
+    }
+  }, []);
 
   async function handlePngExport() {
     setIsExporting(true);
@@ -246,7 +265,7 @@ export default function Home() {
                 </div>
               </fieldset>
 
-              {error && <p className="form-error" role="alert">{error}</p>}
+              {formError && <p className="form-error" role="alert">{formError}</p>}
               <Button className="calculate-button" type="submit"><Sparkles /> 推算四柱 <ArrowDownRight /></Button>
             </form>
             <button className="example-button" type="button" onClick={restoreExample}><RotateCcw /> 恢复示例：1990.01.27 北京</button>
@@ -333,7 +352,7 @@ export default function Home() {
           </section>
         </section>
 
-        <AnnualManual result={result} />
+        <AnnualManual result={result} input={input} isAuthenticated={isAuthenticated} onRestoreChart={restoreSavedChart} />
 
         <section className="method-section" id="method" aria-labelledby="method-title">
           <div className="method-visual">
