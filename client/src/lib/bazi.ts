@@ -8,6 +8,7 @@ export type Gender = "male" | "female";
 export type BaziInput = {
   datetime: string;
   longitude: number;
+  latitude: number;
   gender: Gender;
 };
 
@@ -37,6 +38,7 @@ export type BaziResult = {
   correctedTime: string;
   correctionMinutes: number;
   longitude: number;
+  latitude: number;
   pillars: Pillar[];
   lunarText: string;
   currentJieQi: string;
@@ -139,6 +141,9 @@ export function calculateBazi(input: BaziInput): BaziResult {
   if (!Number.isFinite(input.longitude) || input.longitude < 73 || input.longitude > 136) {
     throw new Error("出生地经度请填写中国常用范围内的数值（73°E–136°E）。");
   }
+  if (!Number.isFinite(input.latitude) || input.latitude < 3 || input.latitude > 54) {
+    throw new Error("出生地纬度请填写中国常用范围内的数值（3°N–54°N）。");
+  }
 
   const originalDate = parseInputTime(input.datetime);
   const correctionMinutes = (input.longitude - 120) * 4;
@@ -194,6 +199,7 @@ export function calculateBazi(input: BaziInput): BaziResult {
     correctedTime: asYmdHms(correctedDate),
     correctionMinutes,
     longitude: input.longitude,
+    latitude: input.latitude,
     pillars,
     lunarText: lunar.toString(),
     currentJieQi: String(lunar.getJieQi?.() || "节气之间"),

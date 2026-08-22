@@ -16,11 +16,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi } from "@/lib/bazi";
 
 const DEFAULT_INPUT: BaziInput = {
   datetime: "1990-01-27T00:00",
   longitude: 116.4074,
+  latitude: 39.9042,
   gender: "male",
 };
 
@@ -93,6 +95,11 @@ export default function Home() {
     setError("");
   }
 
+  function handleCitySelect(location: CityLocation) {
+    setInput((current) => ({ ...current, longitude: location.longitude, latitude: location.latitude }));
+    setError("");
+  }
+
   return (
     <div className="app-shell">
       <header className="masthead">
@@ -147,6 +154,8 @@ export default function Home() {
                 />
               </div>
 
+              <CitySearch onSelect={handleCitySelect} />
+
               <div className="field-head">
                 <label className="field-label" htmlFor="longitude">出生地经度</label>
                 <span>东经（°E）</span>
@@ -161,6 +170,23 @@ export default function Home() {
                   step="0.0001"
                   value={input.longitude}
                   onChange={(event) => setInput((current) => ({ ...current, longitude: Number(event.target.value) }))}
+                  required
+                />
+              </div>
+              <div className="field-head latitude-head">
+                <label className="field-label" htmlFor="latitude">出生地纬度</label>
+                <span>北纬（°N）</span>
+              </div>
+              <div className="field-with-icon">
+                <Compass />
+                <input
+                  id="latitude"
+                  type="number"
+                  min="3"
+                  max="54"
+                  step="0.0001"
+                  value={input.latitude}
+                  onChange={(event) => setInput((current) => ({ ...current, latitude: Number(event.target.value) }))}
                   required
                 />
               </div>
@@ -209,7 +235,7 @@ export default function Home() {
               <div><span>原始北京时间</span><b>{result.originalTime}</b></div>
               <ArrowUpRight />
               <div><span>用于排盘的时刻</span><b>{result.correctedTime}</b></div>
-              <em>经度 {result.longitude.toFixed(4)}°E</em>
+              <em>经度 {result.longitude.toFixed(4)}°E · 纬度 {result.latitude.toFixed(4)}°N</em>
             </div>
 
             <div className="pillars-grid">
