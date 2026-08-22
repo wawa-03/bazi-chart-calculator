@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { createSavedArchive, deleteSavedArchive, listSavedArchives } from "./db";
+import { getAnnualWindow } from "./annualWindow";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const archivePayloadSchema = z.object({
@@ -40,6 +41,11 @@ export const appRouter = router({
     ),
     remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) =>
       deleteSavedArchive(ctx.user.id, input.id),
+    ),
+  }),
+  annual: router({
+    window: publicProcedure.input(z.object({ targetYear: z.number().int().min(1900).max(2200) })).query(({ input }) =>
+      getAnnualWindow(input.targetYear),
     ),
   }),
 });
