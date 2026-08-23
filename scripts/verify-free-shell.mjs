@@ -8,10 +8,18 @@ try {
   const desktop = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   await desktop.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
   const homeText = await desktop.locator("main").innerText();
+  assert.match(homeText, /命运，/);
+  assert.match(homeText, /已经选好/);
   assert.match(homeText, /先排盘/);
   assert.match(homeText, /开始排盘/);
   assert.match(homeText, /看年度命书/);
   assert.match(homeText, /人工深度解读/);
+  const desktopTitle = desktop.locator(".landing-hero h1");
+  const desktopTitleBox = await desktopTitle.boundingBox();
+  const desktopPrimaryBox = await desktop.locator('.landing-actions a[href="/chart"]').boundingBox();
+  assert.equal(await desktopTitle.isVisible(), true);
+  assert.ok(desktopTitleBox && desktopTitleBox.y >= 0 && desktopTitleBox.y + desktopTitleBox.height <= 720);
+  assert.ok(desktopPrimaryBox && desktopPrimaryBox.y >= 0 && desktopPrimaryBox.y + desktopPrimaryBox.height <= 720);
   const primaryChart = desktop.locator('.landing-actions a[href="/chart"]');
   const annualReading = desktop.locator('a[href="/chart#manual"]');
   const humanService = desktop.locator('.route-grid article:nth-child(3) a[href^="/consultation"]');
@@ -45,6 +53,15 @@ try {
   assert.equal(await desktop.getByRole("button", { name: /登录/ }).count(), 1);
 
   const mobile = await browser.newPage({ viewport: { width: 375, height: 812 } });
+  await mobile.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  const mobileTitle = mobile.locator(".landing-hero h1");
+  const mobileTitleBox = await mobileTitle.boundingBox();
+  const mobilePrimaryBox = await mobile.locator('.landing-actions a[href="/chart"]').boundingBox();
+  assert.equal(await mobileTitle.isVisible(), true);
+  assert.match(await mobileTitle.innerText(), /命运，\s*已经选好/);
+  assert.ok(mobileTitleBox && mobileTitleBox.y >= 0 && mobileTitleBox.y + mobileTitleBox.height <= 812);
+  assert.ok(mobilePrimaryBox && mobilePrimaryBox.y >= 0 && mobilePrimaryBox.y + mobilePrimaryBox.height <= 812);
+
   await mobile.goto(`${baseUrl}/consultation`, { waitUntil: "networkidle" });
   const consultationText = await mobile.locator("main").innerText();
   assert.match(consultationText, /人工服务/);
