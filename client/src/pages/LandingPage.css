@@ -1,0 +1,22 @@
+.landing-actions .primary-cta {
+  transition: transform 160ms var(--ease-out);
+  will-change: transform;
+}
+
+.landing-actions .primary-cta svg:last-child {
+  transition: transform 160ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-actions .primary-cta:hover {
+    transform: translateY(-2px);
+  }
+
+  .landing-actions .primary-cta:hover svg:last-child {
+    transform: translateX(3px);
+  }
+
+  .landing-actions .primary-cta:active {
+    transform: scale(.97);
+  }
+}

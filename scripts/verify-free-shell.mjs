@@ -10,10 +10,11 @@ try {
   const homeText = await desktop.locator("main").innerText();
   assert.match(homeText, /命运，/);
   assert.match(homeText, /已经选好/);
-  assert.match(homeText, /先排盘/);
+  assert.match(homeText, /先看八字/);
   assert.match(homeText, /开始排盘/);
   assert.match(homeText, /看年度命书/);
   assert.match(homeText, /人工深度解读/);
+  assert.match(homeText, /答案，从这一刻清楚/);
   const desktopTitle = desktop.locator(".landing-hero h1");
   const desktopTitleBox = await desktopTitle.boundingBox();
   const desktopPrimaryBox = await desktop.locator('.landing-actions a[href="/chart"]').boundingBox();
@@ -26,6 +27,10 @@ try {
   assert.equal(await primaryChart.count(), 1);
   assert.equal(await annualReading.count() >= 1, true);
   assert.equal(await humanService.count(), 1);
+  await primaryChart.hover();
+  await desktop.waitForTimeout(200);
+  assert.notEqual(await primaryChart.evaluate((element) => getComputedStyle(element).transform), "none");
+  assert.notEqual(await primaryChart.locator("svg:last-child").evaluate((element) => getComputedStyle(element).transform), "none");
   assert.deepEqual(await desktop.locator('.route-grid article h2').allTextContents(), ["基础排盘", "年度命书", "人工深度解读"]);
   assert.equal(await desktop.locator('img[alt="三禺微信好友二维码"]').count(), 0);
 
@@ -61,6 +66,12 @@ try {
   assert.match(await mobileTitle.innerText(), /命运，\s*已经选好/);
   assert.ok(mobileTitleBox && mobileTitleBox.y >= 0 && mobileTitleBox.y + mobileTitleBox.height <= 812);
   assert.ok(mobilePrimaryBox && mobilePrimaryBox.y >= 0 && mobilePrimaryBox.y + mobilePrimaryBox.height <= 812);
+  assert.ok(mobilePrimaryBox);
+  await mobile.mouse.move(mobilePrimaryBox.x + mobilePrimaryBox.width / 2, mobilePrimaryBox.y + mobilePrimaryBox.height / 2);
+  await mobile.mouse.down();
+  await mobile.waitForTimeout(100);
+  assert.notEqual(await mobile.locator('.landing-actions a[href="/chart"]').evaluate((element) => getComputedStyle(element).transform), "none");
+  await mobile.mouse.up();
 
   await mobile.goto(`${baseUrl}/consultation`, { waitUntil: "networkidle" });
   const consultationText = await mobile.locator("main").innerText();
