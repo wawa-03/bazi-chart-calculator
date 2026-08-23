@@ -10,11 +10,10 @@ try {
   const homeText = await desktop.locator("main").innerText();
   assert.match(homeText, /把时间，/);
   assert.match(homeText, /看清楚/);
-  assert.match(homeText, /先核对出生时间和地点/);
+  assert.match(homeText, /输入出生时间和地点/);
   assert.match(homeText, /开始排盘/);
-  assert.match(homeText, /看年度命书/);
-  assert.match(homeText, /人工深度解读/);
-  assert.match(homeText, /先核对。再决定怎么看/);
+  assert.match(homeText, /已排过盘？看年度阅读/);
+  assert.match(homeText, /按节气把时间排清楚。想停，随时可以/);
   assert.doesNotMatch(homeText, /命运，\s*已经选好|答案，从这一刻清楚/);
   const desktopTitle = desktop.locator(".landing-hero h1");
   const desktopTitleBox = await desktopTitle.boundingBox();
@@ -23,16 +22,18 @@ try {
   assert.ok(desktopTitleBox && desktopTitleBox.y >= 0 && desktopTitleBox.y + desktopTitleBox.height <= 720);
   assert.ok(desktopPrimaryBox && desktopPrimaryBox.y >= 0 && desktopPrimaryBox.y + desktopPrimaryBox.height <= 720);
   const primaryChart = desktop.locator('.landing-actions a[href="/chart"]');
-  const annualReading = desktop.locator('a[href="/chart#manual"]');
-  const humanService = desktop.locator('.route-grid article:nth-child(3) a[href^="/consultation"]');
+  const annualReading = desktop.locator('.landing-secondary-link[href="/chart#manual"]');
   assert.equal(await primaryChart.count(), 1);
-  assert.equal(await annualReading.count() >= 1, true);
-  assert.equal(await humanService.count(), 1);
+  assert.equal(await annualReading.count(), 1);
+  assert.equal(await desktop.locator('.product-header nav').count(), 0);
+  assert.equal(await desktop.locator('.route-grid, .landing-note, .landing-hero figure').count(), 0);
   await primaryChart.hover();
   await desktop.waitForTimeout(200);
   assert.notEqual(await primaryChart.evaluate((element) => getComputedStyle(element).transform), "none");
   assert.notEqual(await primaryChart.locator("svg:last-child").evaluate((element) => getComputedStyle(element).transform), "none");
-  assert.deepEqual(await desktop.locator('.route-grid article h2').allTextContents(), ["基础排盘", "年度命书", "人工深度解读"]);
+  const primaryPosition = await primaryChart.boundingBox();
+  const annualPosition = await annualReading.boundingBox();
+  assert.ok(primaryPosition && annualPosition && primaryPosition.y < annualPosition.y);
   assert.equal(await desktop.locator('img[alt="三禺微信好友二维码"]').count(), 0);
 
   await desktop.goto(`${baseUrl}/chart`, { waitUntil: "networkidle" });
