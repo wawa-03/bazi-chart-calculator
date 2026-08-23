@@ -11,7 +11,7 @@ try {
   await page.locator(".manual-create-button").click({ timeout: 10000 });
   await page.waitForSelector("#life-themes", { timeout: 10000 });
 
-  assert.match(await page.locator(".focus-reading-card").innerText(), /文化研究阅读提示/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /只作参考/);
   assert.match(await page.locator("#fortune-contrast-title").innerText(), /大运与流年对照/);
   assert.match(await page.locator("#life-themes").innerText(), /关系与亲密/);
   assert.match(await page.locator("#life-themes").innerText(), /事业与路径/);

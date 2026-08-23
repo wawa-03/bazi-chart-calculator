@@ -18,22 +18,22 @@ type ThemeCopy = Omit<LifeTheme, "key" | "evidence">;
 
 const COPY: Record<ManualLocale, Record<LifeThemeKey, ThemeCopy>> = {
   "zh-CN": {
-    relationship: { title: "关系与亲密", label: "RELATIONSHIP", focus: "把关系放回具体互动：先说清需求、界限与可投入的时间。", question: "这一段关系里，我想被怎样理解，也愿意如何回应？", action: "选择一段重要沟通，先写下一个事实和一个感受，再决定是否表达。", boundary: "这不是婚恋结果、相合相冲或任何关系成败的判断。" },
-    career: { title: "事业与路径", label: "WORK & PATH", focus: "把注意力放在技能、责任、协作与工作节奏，而非一次性定义职业走向。", question: "现在最值得我反复练习或明确边界的一项工作能力是什么？", action: "为本周选择一件可交付的小成果，并写下完成标准。", boundary: "这不是升职、离职、创业成功或职业结果的预测。" },
-    finance: { title: "财务与资源", label: "MONEY & RESOURCES", focus: "把“财务”理解为资源流、承诺与风险暴露的核对，而不是收益预言。", question: "我能否清楚说出本月一项必要支出、一个承诺和一项风险？", action: "只做一次账目或合约核对；涉及投资、借贷或交易时，请以专业与事实信息为准。", boundary: "不构成投资、借贷、交易、保险或任何财务决策建议。" },
-    rhythm: { title: "生活节奏", label: "DAILY RHYTHM", focus: "从精力、空间与恢复感入手，为日常留出可以重复的小节奏。", question: "哪一个时段最需要被保护，才能让生活不被事项推着走？", action: "为下一个节气前留出一段无安排时间，并只观察是否更容易恢复。", boundary: "这不是健康诊断、治疗建议或对人生状态的确定判断。" },
+    relationship: { title: "关系与亲密", label: "RELATIONSHIP", focus: "先说清需求和界限。", question: "我想怎样被理解？", action: "先写一个事实和一个感受。", boundary: "不判断关系成败。" },
+    career: { title: "事业与路径", label: "WORK & PATH", focus: "先看技能和节奏。", question: "现在最该练什么？", action: "定一个本周能完成的小目标。", boundary: "不预测职业结果。" },
+    finance: { title: "财务与资源", label: "MONEY & RESOURCES", focus: "先看支出、承诺和风险。", question: "这个月最要紧的一笔钱是什么？", action: "核对一次账目或合同。", boundary: "不构成投资或借贷建议。" },
+    rhythm: { title: "生活节奏", label: "DAILY RHYTHM", focus: "给自己留一点空。", question: "什么时候最需要不被打扰？", action: "下个节气前，留一段空白时间。", boundary: "不作健康判断。" },
   },
   "zh-TW": {
-    relationship: { title: "關係與親密", label: "RELATIONSHIP", focus: "把關係放回具體互動：先說清需求、界限與可投入的時間。", question: "這一段關係裡，我想被怎樣理解，也願意如何回應？", action: "選擇一段重要溝通，先寫下一個事實和一個感受，再決定是否表達。", boundary: "這不是婚戀結果、相合相沖或任何關係成敗的判斷。" },
-    career: { title: "事業與路徑", label: "WORK & PATH", focus: "把注意力放在技能、責任、協作與工作節奏，而非一次性定義職業走向。", question: "現在最值得我反覆練習或明確邊界的一項工作能力是什麼？", action: "為本週選擇一件可交付的小成果，並寫下完成標準。", boundary: "這不是升職、離職、創業成功或職業結果的預測。" },
-    finance: { title: "財務與資源", label: "MONEY & RESOURCES", focus: "把「財務」理解為資源流、承諾與風險暴露的核對，而不是收益預言。", question: "我能否清楚說出本月一項必要支出、一個承諾和一項風險？", action: "只做一次帳目或合約核對；涉及投資、借貸或交易時，請以專業與事實資訊為準。", boundary: "不構成投資、借貸、交易、保險或任何財務決策建議。" },
-    rhythm: { title: "生活節奏", label: "DAILY RHYTHM", focus: "從精力、空間與恢復感入手，為日常留出可以重複的小節奏。", question: "哪一個時段最需要被保護，才能讓生活不被事項推著走？", action: "為下一個節氣前留出一段無安排時間，並只觀察是否更容易恢復。", boundary: "這不是健康診斷、治療建議或對人生狀態的確定判斷。" },
+    relationship: { title: "關係與親密", label: "RELATIONSHIP", focus: "先說清需求和界限。", question: "我想怎樣被理解？", action: "先寫一個事實和一個感受。", boundary: "不判斷關係成敗。" },
+    career: { title: "事業與路徑", label: "WORK & PATH", focus: "先看技能和節奏。", question: "現在最該練什麼？", action: "定一個本週能完成的小目標。", boundary: "不預測職業結果。" },
+    finance: { title: "財務與資源", label: "MONEY & RESOURCES", focus: "先看支出、承諾和風險。", question: "這個月最要緊的一筆錢是什麼？", action: "核對一次帳目或合約。", boundary: "不是投資或借貸建議。" },
+    rhythm: { title: "生活節奏", label: "DAILY RHYTHM", focus: "給自己留一點空。", question: "什麼時候最需要不被打擾？", action: "下個節氣前，留一段空白時間。", boundary: "不作健康判斷。" },
   },
   en: {
-    relationship: { title: "Relationship & closeness", label: "RELATIONSHIP", focus: "Bring attention back to specific interactions: name needs, boundaries, and the time you can genuinely offer.", question: "In this relationship, how do I hope to be understood, and how am I willing to respond?", action: "For one important conversation, write one fact and one feeling before deciding whether to share them.", boundary: "This does not predict romance, compatibility, conflict, or the outcome of a relationship." },
-    career: { title: "Work & path", label: "WORK & PATH", focus: "Attend to skills, responsibility, collaboration, and work rhythm instead of trying to define a whole career at once.", question: "Which ability is most worth practising or giving clearer boundaries right now?", action: "Choose one small deliverable for this week and write down what finished means.", boundary: "This does not predict promotion, resignation, entrepreneurship, or any career result." },
-    finance: { title: "Money & resources", label: "MONEY & RESOURCES", focus: "Treat finance as a check of resource flow, commitments, and risk exposure—not a forecast of returns.", question: "Can I name one necessary cost, one commitment, and one risk this month?", action: "Do one review of accounts or an agreement; use professional and factual information for investing, lending, or trading.", boundary: "This is not investment, lending, trading, insurance, or any financial-decision advice." },
-    rhythm: { title: "Daily rhythm", label: "DAILY RHYTHM", focus: "Start with energy, space, and recovery, then reserve a small rhythm that can be repeated.", question: "Which part of the day needs protecting so that tasks do not set the whole pace?", action: "Keep one unplanned period before the next solar term and only observe whether recovery becomes easier.", boundary: "This is not a health diagnosis, treatment recommendation, or certain judgment about life circumstances." },
+    relationship: { title: "Relationship & closeness", label: "RELATIONSHIP", focus: "Name needs and boundaries.", question: "How do I want to be understood?", action: "Write one fact and one feeling.", boundary: "It does not judge a relationship." },
+    career: { title: "Work & path", label: "WORK & PATH", focus: "Check skill and pace.", question: "What should I practise now?", action: "Set one small goal for this week.", boundary: "It does not predict career results." },
+    finance: { title: "Money & resources", label: "MONEY & RESOURCES", focus: "Check cost, commitment, and risk.", question: "What money need matters most this month?", action: "Review accounts or one agreement.", boundary: "Not investment or lending advice." },
+    rhythm: { title: "Daily rhythm", label: "DAILY RHYTHM", focus: "Leave some space for yourself.", question: "When do you need no interruptions?", action: "Keep one open block before the next term.", boundary: "It does not assess health." },
   },
 };
 

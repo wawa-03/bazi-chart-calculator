@@ -6,9 +6,9 @@ import { useAppLocale } from "@/contexts/AppLocaleContext";
 import "@/pages/ProductPages.css";
 
 const copy = {
-  "zh-CN": { chart: "排盘", manual: "命书", pricing: "服务", consultation: "咨询", account: "账户", login: "登录", logout: "退出登录", accountHint: "我的档案", footer: "历法工作台 · 文化研究与反思工具，不构成确定性预测或人生决策建议。" },
-  "zh-TW": { chart: "排盤", manual: "命書", pricing: "服務", consultation: "諮詢", account: "帳戶", login: "登入", logout: "登出", accountHint: "我的檔案", footer: "曆法工作台 · 文化研究與反思工具，不構成確定性預測或人生決策建議。" },
-  en: { chart: "Chart", manual: "Annual reading", pricing: "Services", consultation: "Consultation", account: "Account", login: "Log in", logout: "Log out", accountHint: "My archive", footer: "An ephemeris workspace for cultural research and reflection—not certain prediction or life-decision advice." },
+  "zh-CN": { chart: "排盘", manual: "命书", pricing: "服务", consultation: "咨询", account: "账户", login: "登录", logout: "退出", accountHint: "我的档案", footer: "排盘工具。只作参考，不替你做决定。" },
+  "zh-TW": { chart: "排盤", manual: "命書", pricing: "服務", consultation: "諮詢", account: "帳戶", login: "登入", logout: "登出", accountHint: "我的檔案", footer: "排盤工具。只作參考，不替你做決定。" },
+  en: { chart: "Chart", manual: "Annual", pricing: "Services", consultation: "Contact", account: "Account", login: "Log in", logout: "Log out", accountHint: "My archive", footer: "A charting tool. For reflection, not decisions." },
 } as const;
 
 export function SiteHeader() {
@@ -35,7 +35,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   const { locale } = useAppLocale();
-  return <footer className="product-footer"><div><img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="" /><span>观历 / GUANLI</span></div><p>{copy[locale].footer} 核心阅读免费开放；人工服务另行确认。</p></footer>;
+  return <footer className="product-footer"><div><img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="" /><span>观历 / GUANLI</span></div><p>{copy[locale].footer} 阅读免费；人工服务另行确认。</p></footer>;
 }
 
 export function ProductPage({ children }: { children: React.ReactNode }) {

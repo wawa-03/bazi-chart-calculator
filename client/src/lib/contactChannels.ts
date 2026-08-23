@@ -12,7 +12,7 @@ export const humanContactChannels: ContactChannel[] = [
   {
     key: "wechat",
     title: "微信扫码联系",
-    description: "扫描二维码，添加「三禺」为好友后说明来自观历。",
+    description: "扫码添加「三禺」。",
     active: true,
     assetUrl: "/manus-storage/guanli-wechat-san-yu-qr_7769c3e9.jpg",
   },
