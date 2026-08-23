@@ -58,7 +58,6 @@ export default function ConsultationPage() {
             <li><CheckCircle2 />账户中心每 20 秒刷新一次可见进度</li>
           </ul>
           <Link href="/account">查看我的申请 <ArrowRight /></Link>
-          <HumanContactCard compact />
         </div>
         <form className="consult-form" onSubmit={handleSubmit}>
           <header><span>REQUEST / PRIVATE</span><h2>提交申请</h2></header>
@@ -85,6 +84,7 @@ export default function ConsultationPage() {
           <p className="consult-boundary"><LockKeyhole />提交申请不等于购买、捐赠或即时解读；如需合作、赞助或人工服务，具体方式由服务方在联系后以合规渠道另行确认。</p>
         </form>
       </section>
+      <HumanContactCard />
     </ProductPage>
   );
 }
