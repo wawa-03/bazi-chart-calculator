@@ -18,7 +18,8 @@ try {
   assert.match(await page.locator("#life-themes").innerText(), /财务与资源/);
   assert.match(await page.locator("#life-themes").innerText(), /生活节奏/);
   assert.equal(await page.locator(".annual-upgrade-gate").count(), 0);
-  console.log("Free full-reading verification passed: future volume reveals Da Yun/flow-year contrast and all four life themes without a purchase gate.");
+  assert.equal(await page.locator(".focus-consult-link").getAttribute("href"), "/consultation?service=deep_reading");
+  console.log("Free full-reading verification passed: future volume reveals Da Yun/flow-year contrast, all four life themes, and a human-discussion entry without a purchase gate.");
   await context.close();
 } finally {
   await browser.close();

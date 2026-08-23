@@ -163,6 +163,14 @@ export async function listThemeNotes(userId: number, archiveId: number) {
     .orderBy(desc(themeNotes.updatedAt));
 }
 
+export async function listAllThemeNotes(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  return db.select().from(themeNotes)
+    .where(eq(themeNotes.userId, userId))
+    .orderBy(desc(themeNotes.updatedAt));
+}
+
 export async function saveThemeNote(userId: number, archiveId: number, themeKey: string, content: string) {
   const db = await getDb();
   if (!db) throw new Error("数据库暂不可用，请稍后重试。");

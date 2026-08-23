@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
+import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listAllThemeNotes, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
 import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
@@ -47,6 +47,7 @@ export const appRouter = router({
     ),
   }),
   themeNotes: router({
+    listAll: protectedProcedure.query(({ ctx }) => listAllThemeNotes(ctx.user.id)),
     list: protectedProcedure.input(z.object({ archiveId: z.number().int().positive() })).query(({ ctx, input }) =>
       listThemeNotes(ctx.user.id, input.archiveId),
     ),

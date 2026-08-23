@@ -8,6 +8,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteSavedArchive: vi.fn(),
   deleteThemeNote: vi.fn(),
   listAllConsultationRequests: vi.fn(),
+  listAllThemeNotes: vi.fn(),
   listConsultationRequests: vi.fn(),
   listSavedArchives: vi.fn(),
   listThemeNotes: vi.fn(),
@@ -67,15 +68,18 @@ describe("archives router", () => {
   });
 
   it("scopes theme-note save, list, and removal to the authenticated archive owner", async () => {
+    dbMocks.listAllThemeNotes.mockResolvedValue([]);
     dbMocks.listThemeNotes.mockResolvedValue([]);
     dbMocks.saveThemeNote.mockResolvedValue({ id: 1, content: "本周回顾" });
     dbMocks.deleteThemeNote.mockResolvedValue({ deleted: true });
     const caller = appRouter.createCaller(contextFor(42));
 
+    await caller.themeNotes.listAll();
     await caller.themeNotes.list({ archiveId: 7 });
     await caller.themeNotes.save({ archiveId: 7, themeKey: "career", content: "本周回顾" });
     await caller.themeNotes.remove({ archiveId: 7, themeKey: "career" });
 
+    expect(dbMocks.listAllThemeNotes).toHaveBeenCalledWith(42);
     expect(dbMocks.listThemeNotes).toHaveBeenCalledWith(42, 7);
     expect(dbMocks.saveThemeNote).toHaveBeenCalledWith(42, 7, "career", "本周回顾");
     expect(dbMocks.deleteThemeNote).toHaveBeenCalledWith(42, 7, "career");
