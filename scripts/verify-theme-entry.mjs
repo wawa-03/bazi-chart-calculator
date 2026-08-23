@@ -9,10 +9,20 @@ try {
   await page.locator(".site-locale-control select").selectOption("zh-CN");
   await page.locator("#manual").scrollIntoViewIfNeeded();
   await page.locator(".manual-create-button").click({ timeout: 10000 });
-  await page.waitForSelector("#life-themes", { timeout: 10000 });
+  await page.waitForSelector(".theme-pause-card", { timeout: 10000 });
 
   assert.match(await page.locator(".focus-reading-card").innerText(), /只作参考/);
   assert.match(await page.locator("#fortune-contrast-title").innerText(), /大运与流年对照/);
+  assert.match(await page.locator(".theme-pause-card").innerText(), /现在不用给自己一个答案/);
+  assert.equal(await page.getByRole("link", { name: "回到排盘" }).getAttribute("href"), "#calculator");
+  assert.equal(await page.locator("#life-themes").isVisible(), false);
+  await page.getByRole("button", { name: "打开主题" }).click();
+  await page.waitForSelector("#life-themes", { state: "visible", timeout: 10000 });
+  await page.getByRole("button", { name: "先停在这里" }).click();
+  assert.equal(await page.locator("#life-themes").isVisible(), false);
+  assert.equal(await page.locator(".theme-pause-card").isVisible(), true);
+  await page.getByRole("link", { name: "回到排盘" }).click();
+  await page.waitForURL(/#calculator$/);
   assert.match(await page.locator("#life-themes").innerText(), /关系与亲密/);
   assert.match(await page.locator("#life-themes").innerText(), /事业与路径/);
   assert.match(await page.locator("#life-themes").innerText(), /财务与资源/);

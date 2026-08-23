@@ -119,3 +119,12 @@
   .life-theme-tabs button { min-height: 62px; grid-template-columns: auto 1fr; grid-template-rows: 1fr; align-items: center; justify-content: center; column-gap: 8px; }
   .fortune-contrast-card { grid-template-columns: 1fr; }.fortune-contrast-card dl { width: 100%; }.theme-entry-note { font-size: 10px !important; }
 }
+
+.theme-pause-card { margin-top: 20px; padding: 18px; border-left: 2px solid var(--indigo); background: rgba(44, 70, 80, .035); }
+.theme-pause-card > span { color: var(--indigo); font: 500 9px var(--mono); letter-spacing: .1em; }
+.theme-pause-card h4 { margin: 8px 0 6px; color: #30433f; font: 800 22px/1.2 var(--serif); }
+.theme-pause-card p { max-width: 520px; margin: 0; color: #68756f; font: 11px/1.7 var(--sans); }
+.theme-pause-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }.theme-pause-card button, .theme-pause-actions a, .theme-pause-button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid #bdc8c4; background: transparent; color: #49625c; font: 700 10px var(--sans); text-decoration: none; cursor: pointer; }
+.theme-pause-card button svg { width: 13px; color: var(--indigo); }
+.theme-pause-button { margin-top: 12px; }
+.manual-reading.is-themes-paused .life-theme-section { display: none; }

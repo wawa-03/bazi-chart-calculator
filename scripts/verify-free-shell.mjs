@@ -8,13 +8,14 @@ try {
   const desktop = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   await desktop.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
   const homeText = await desktop.locator("main").innerText();
-  assert.match(homeText, /命运，/);
-  assert.match(homeText, /已经选好/);
-  assert.match(homeText, /先看八字/);
+  assert.match(homeText, /把时间，/);
+  assert.match(homeText, /看清楚/);
+  assert.match(homeText, /先核对出生时间和地点/);
   assert.match(homeText, /开始排盘/);
   assert.match(homeText, /看年度命书/);
   assert.match(homeText, /人工深度解读/);
-  assert.match(homeText, /答案，从这一刻清楚/);
+  assert.match(homeText, /先核对。再决定怎么看/);
+  assert.doesNotMatch(homeText, /命运，\s*已经选好|答案，从这一刻清楚/);
   const desktopTitle = desktop.locator(".landing-hero h1");
   const desktopTitleBox = await desktopTitle.boundingBox();
   const desktopPrimaryBox = await desktop.locator('.landing-actions a[href="/chart"]').boundingBox();
@@ -35,6 +36,7 @@ try {
   assert.equal(await desktop.locator('img[alt="三禺微信好友二维码"]').count(), 0);
 
   await desktop.goto(`${baseUrl}/chart`, { waitUntil: "networkidle" });
+  assert.equal(await desktop.locator('img[alt="Solar-term diagram"]').count(), 1);
   const chartRules = desktop.locator(".method-more");
   assert.equal(await chartRules.count(), 1);
   assert.equal(await chartRules.evaluate((element) => element.open), false);
@@ -63,7 +65,7 @@ try {
   const mobileTitleBox = await mobileTitle.boundingBox();
   const mobilePrimaryBox = await mobile.locator('.landing-actions a[href="/chart"]').boundingBox();
   assert.equal(await mobileTitle.isVisible(), true);
-  assert.match(await mobileTitle.innerText(), /命运，\s*已经选好/);
+  assert.match(await mobileTitle.innerText(), /把时间，\s*看清楚/);
   assert.ok(mobileTitleBox && mobileTitleBox.y >= 0 && mobileTitleBox.y + mobileTitleBox.height <= 812);
   assert.ok(mobilePrimaryBox && mobilePrimaryBox.y >= 0 && mobilePrimaryBox.y + mobilePrimaryBox.height <= 812);
   assert.ok(mobilePrimaryBox);

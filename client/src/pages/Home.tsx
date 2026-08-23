@@ -199,7 +199,7 @@ export default function Home() {
             <div className="hero-notes"><span><b>24</b> {copy.hero.notes[0]}</span><span><b>120°E</b> {copy.hero.notes[1]}</span><span><b>23:00</b> {copy.hero.notes[2]}</span></div>
           </div>
           <figure className="hero-figure">
-            <img src="/manus-storage/guanli-hero-astronomical-almanac_978f146c.jpg" alt="Astronomical almanac" />
+            <img src="/manus-storage/guanli-solar-term-diagram_55fe852a.jpg" alt="Solar-term diagram" />
             <figcaption><span>{copy.hero.caption}</span><i /> {copy.hero.captionHint}</figcaption>
           </figure>
         </section>
