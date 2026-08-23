@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertSavedArchive, InsertUser, savedArchives, themeNotes, users } from "../drizzle/schema";
+import { consultationRequests, InsertSavedArchive, InsertUser, savedArchives, themeNotes, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 export type ArchivePayload = {
@@ -16,6 +16,14 @@ export type ArchivePayload = {
     residence: string;
     year: number;
   };
+};
+
+export type ConsultationPayload = {
+  service: "theme_report" | "annual_manual" | "deep_reading" | "collaboration";
+  archiveId?: number;
+  contactMethod: "account_email" | "wechat" | "other";
+  contactDetail: string;
+  request: string;
 };
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -176,4 +184,44 @@ export async function deleteThemeNote(userId: number, archiveId: number, themeKe
     eq(themeNotes.themeKey, themeKey),
   ));
   return { deleted: result[0].affectedRows > 0 };
+}
+
+export async function createConsultationRequest(userId: number, payload: ConsultationPayload) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  const result = await db.insert(consultationRequests).values({
+    userId,
+    archiveId: payload.archiveId,
+    service: payload.service,
+    contactMethod: payload.contactMethod,
+    contactDetail: payload.contactDetail,
+    request: payload.request,
+  });
+  const id = Number(result[0].insertId);
+  const created = await db.select().from(consultationRequests)
+    .where(and(eq(consultationRequests.id, id), eq(consultationRequests.userId, userId)))
+    .limit(1);
+  return created[0];
+}
+
+export async function listConsultationRequests(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  return db.select().from(consultationRequests)
+    .where(eq(consultationRequests.userId, userId))
+    .orderBy(desc(consultationRequests.createdAt));
+}
+
+export async function deleteConsultationRequest(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  const result = await db.delete(consultationRequests)
+    .where(and(eq(consultationRequests.id, id), eq(consultationRequests.userId, userId)));
+  return { deleted: result[0].affectedRows > 0 };
+}
+
+export async function listAllConsultationRequests() {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  return db.select().from(consultationRequests).orderBy(desc(consultationRequests.createdAt));
 }

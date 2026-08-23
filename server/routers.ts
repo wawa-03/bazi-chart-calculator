@@ -2,11 +2,12 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createSavedArchive, deleteSavedArchive, deleteThemeNote, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
+import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
 import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { notifyOwner } from "./_core/notification";
 
 const archivePayloadSchema = z.object({
   input: z.object({
@@ -58,6 +59,27 @@ export const appRouter = router({
       archiveId: z.number().int().positive(),
       themeKey: z.enum(["relationship", "career", "finance", "rhythm"]),
     })).mutation(({ ctx, input }) => deleteThemeNote(ctx.user.id, input.archiveId, input.themeKey)),
+  }),
+  consultations: router({
+    list: protectedProcedure.query(({ ctx }) => listConsultationRequests(ctx.user.id)),
+    submit: protectedProcedure.input(z.object({
+      service: z.enum(["theme_report", "annual_manual", "deep_reading", "collaboration"]),
+      archiveId: z.number().int().positive().optional(),
+      contactMethod: z.enum(["account_email", "wechat", "other"]),
+      contactDetail: z.string().trim().min(2).max(180),
+      request: z.string().trim().min(10).max(1000),
+    })).mutation(async ({ ctx, input }) => {
+      const request = await createConsultationRequest(ctx.user.id, input);
+      void notifyOwner({
+        title: "观历：新的人工深度解读申请",
+        content: `申请编号 ${request?.id ?? "待确认"}；服务类型 ${input.service}。请在账户中心的咨询申请中查看详情。`,
+      }).catch(() => undefined);
+      return request;
+    }),
+    remove: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) =>
+      deleteConsultationRequest(ctx.user.id, input.id),
+    ),
+    adminList: adminProcedure.query(() => listAllConsultationRequests()),
   }),
   annual: router({
     window: publicProcedure.input(z.object({ targetYear: z.number().int().min(1900).max(2200) })).query(({ input }) =>

@@ -1,0 +1,1 @@
+ALTER TABLE `consultationRequests` MODIFY COLUMN `service` enum('theme_report','annual_manual','deep_reading','collaboration') NOT NULL;

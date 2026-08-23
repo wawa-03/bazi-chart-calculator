@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 const dbMocks = vi.hoisted(() => ({
+  createConsultationRequest: vi.fn(),
   createSavedArchive: vi.fn(),
+  deleteConsultationRequest: vi.fn(),
   deleteSavedArchive: vi.fn(),
   deleteThemeNote: vi.fn(),
+  listAllConsultationRequests: vi.fn(),
+  listConsultationRequests: vi.fn(),
   listSavedArchives: vi.fn(),
   listThemeNotes: vi.fn(),
   saveThemeNote: vi.fn(),
@@ -12,6 +16,7 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("./db", () => dbMocks);
+vi.mock("./_core/notification", () => ({ notifyOwner: vi.fn().mockResolvedValue(true) }));
 
 import { appRouter } from "./routers";
 
@@ -74,6 +79,27 @@ describe("archives router", () => {
     expect(dbMocks.listThemeNotes).toHaveBeenCalledWith(42, 7);
     expect(dbMocks.saveThemeNote).toHaveBeenCalledWith(42, 7, "career", "本周回顾");
     expect(dbMocks.deleteThemeNote).toHaveBeenCalledWith(42, 7, "career");
+  });
+
+  it("keeps consultation applications scoped to the authenticated user", async () => {
+    dbMocks.listConsultationRequests.mockResolvedValue([]);
+    dbMocks.createConsultationRequest.mockResolvedValue({ id: 12, service: "collaboration" });
+    dbMocks.deleteConsultationRequest.mockResolvedValue({ deleted: true });
+    const caller = appRouter.createCaller(contextFor(42));
+    const payload = {
+      service: "collaboration" as const,
+      contactMethod: "wechat" as const,
+      contactDetail: "guanli-contact",
+      request: "希望深入讨论年度阅读中的事业与关系主题。",
+    };
+
+    await caller.consultations.list();
+    await caller.consultations.submit(payload);
+    await caller.consultations.remove({ id: 12 });
+
+    expect(dbMocks.listConsultationRequests).toHaveBeenCalledWith(42);
+    expect(dbMocks.createConsultationRequest).toHaveBeenCalledWith(42, payload);
+    expect(dbMocks.deleteConsultationRequest).toHaveBeenCalledWith(42, 12);
   });
 
   it("uses edge country for a display default and persists only an explicit language override", async () => {

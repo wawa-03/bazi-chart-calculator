@@ -66,3 +66,26 @@ export const themeNotes = mysqlTable("themeNotes", {
 ]);
 
 export type ThemeNote = typeof themeNotes.$inferSelect;
+
+/**
+ * User-directed application for an independent human deep-reading service.
+ * Detailed consultation requests remain private to the applicant and project
+ * administrators; a saved archive can be associated but is never copied here.
+ */
+export const consultationRequests = mysqlTable("consultationRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  archiveId: int("archiveId").references(() => savedArchives.id, { onDelete: "cascade" }),
+  service: mysqlEnum("service", ["theme_report", "annual_manual", "deep_reading", "collaboration"]).notNull(),
+  contactMethod: mysqlEnum("contactMethod", ["account_email", "wechat", "other"]).notNull(),
+  contactDetail: varchar("contactDetail", { length: 180 }).notNull(),
+  request: text("request").notNull(),
+  status: mysqlEnum("status", ["pending", "contacted", "closed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("consultation_requests_user_created_idx").on(table.userId, table.createdAt),
+  index("consultation_requests_status_created_idx").on(table.status, table.createdAt),
+]);
+
+export type ConsultationRequest = typeof consultationRequests.$inferSelect;

@@ -1,0 +1,8 @@
+import { ArrowRight, BookOpenText, CalendarRange, Compass, LockKeyhole, ScrollText } from "lucide-react";
+import { Link } from "wouter";
+import { ProductPage, ServicePill } from "@/components/SiteShell";
+import "./ProductPages.css";
+
+export default function LandingPage() {
+  return <ProductPage><section className="landing-hero"><div><ServicePill>观象历书 / 2026</ServicePill><h1>以出生时空为起点，<strong>从排盘走向年度阅读。</strong></h1><p>观历将基础四柱、节气未来月卷、人生主题与私有档案放进一套可回看的历书工作台。基础排盘、年度命书、主题阅读与完整报告均可免费使用；需要进一步讨论时，可提交人工咨询申请。</p><div className="landing-actions"><Link className="primary-cta" href="/chart"><Compass />免费开始排盘 <ArrowRight /></Link><Link className="quiet-cta" href="/pricing">查看服务方式</Link></div><div className="landing-trust"><span>24 节气为界</span><span>经度地方时差</span><span>私有档案可删除</span></div></div><figure><img src="/manus-storage/guanli-hero-astronomical-almanac_978f146c.jpg" alt="天文历书与星盘" /><figcaption>从排盘开始，按自己的节奏进入下一卷。</figcaption></figure></section><section className="route-grid" aria-label="观历服务路径"><article><div><span>01 / FREE</span><Compass /></div><h2>基础排盘</h2><p>输入出生时间、城市或经纬度，校对真太阳时、节气与四柱。</p><Link href="/chart">免费起盘 <ArrowRight /></Link></article><article><div><span>02 / FREE</span><ScrollText /></div><h2>年度命书</h2><p>以未来节气月卷为线索，阅读主题对照、保存回顾并导出完整报告。</p><Link href="/chart#manual">免费进入命书 <ArrowRight /></Link></article><article><div><span>03 / HUMAN</span><BookOpenText /></div><h2>人工深度解读</h2><p>提交咨询申请，由服务方联系你安排后续人工深度解读。</p><Link href="/consultation">申请咨询 <ArrowRight /></Link></article></section><section className="landing-note"><CalendarRange /><div><b>不是一次性“看完命运”。</b><p>观历的排盘、年度阅读与完整报告均免费开放；人工咨询是独立的后续联系服务，由服务方确认安排。</p></div><LockKeyhole /></section></ProductPage>;
+}

@@ -27,6 +27,7 @@ import { BaziInput, BaziResult, calculateBazi, formatCoordinate } from "@/lib/ba
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { siteCopy } from "@/lib/siteCopy";
+import { SiteFooter, SiteHeader } from "@/components/SiteShell";
 
 const DEFAULT_INPUT: BaziInput = {
   datetime: "1990-01-27T00:00",
@@ -81,7 +82,7 @@ function PillarCard({ pillar, index, labels }: { pillar: BaziResult["pillars"][n
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
-  const { locale, setLocale } = useAppLocale();
+  const { locale } = useAppLocale();
   const copy = siteCopy[locale];
   const [input, setInput] = useState<BaziInput>(DEFAULT_INPUT);
   const [longitudeText, setLongitudeText] = useState(() => formatCoordinate(DEFAULT_INPUT.longitude));
@@ -172,24 +173,7 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <header className="masthead">
-        <a className="brand" href="#top" aria-label="Guanli home">
-          <img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="Guanli" />
-          <span><b>观历</b><small>BĀZÌ / EPHEMERIS</small></span>
-        </a>
-        <nav aria-label="Page navigation">
-          <a href="#calculator">{copy.nav.calculator} <ChevronRight /></a>
-          <a href="#manual">{copy.nav.annual} <ChevronRight /></a>
-          <a href="#method">{copy.nav.method} <ChevronRight /></a>
-        </nav>
-        <label className="site-locale-control">
-          <span>{copy.language}</span>
-          <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)} aria-label={copy.language}>
-            <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">English</option>
-          </select>
-        </label>
-        <div className="local-status"><i /> {copy.localStatus}</div>
-      </header>
+      <SiteHeader />
 
       <main id="top">
         <section className="hero-section" aria-labelledby="hero-title">
@@ -242,7 +226,7 @@ export default function Home() {
         <AnnualManual result={result} input={input} isAuthenticated={isAuthenticated} onRestoreChart={restoreSavedChart} />
         <section className="method-section" id="method" aria-labelledby="method-title"><div className="method-visual"><img src="/manus-storage/guanli-solar-term-diagram_55fe852a.jpg" alt="Solar-term diagram" /><span>{locale === "en" ? "SOLAR TERMS" : "节气为界"}</span></div><div className="method-copy"><div className="eyebrow"><BookOpenText /> {copy.method.kicker}</div><h2 id="method-title">{copy.method.titleBefore.split("\n").map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}<strong>{copy.method.titleAccent}</strong>{locale === "en" ? "." : "。"}</h2><div className="method-list"><div><span>01</span><p><b>{copy.method.firstTitle}</b>：{copy.method.firstBody}</p></div><div><span>02</span><p><b>{copy.method.secondTitle}</b>：{copy.method.secondBody}</p></div><div><span>03</span><p><b>{copy.method.thirdTitle}</b>：{copy.method.thirdBody}</p></div></div><a className="reference-link" href="https://github.com/6tail/lunar-javascript" target="_blank" rel="noreferrer">{copy.method.link} <ArrowUpRight /></a></div></section>
       </main>
-      <footer className="footer"><div><img src="/manus-storage/guanli-orbit-seal-logo_9c6794f4.png" alt="" /><span>{copy.footer.brand}</span></div><p>{copy.footer.disclaimer}</p></footer>
+      <SiteFooter />
     </div>
   );
 }
