@@ -10,7 +10,9 @@ try {
   const serviceText = await desktop.locator("main").innerText();
   assert.match(serviceText, /完整阅读保持开放/);
   assert.match(serviceText, /网站内不设自动结账/);
+  assert.match(serviceText, /扫码联系人工服务方/);
   assert.doesNotMatch(serviceText, /¥9\.90|US\$9\.90|€9\.90/);
+  assert.equal(await desktop.locator('img[alt="三禺微信好友二维码"]').count(), 1);
   assert.equal(await desktop.getByRole("button", { name: /Log in|登录/ }).count(), 1);
 
   await desktop.goto(`${baseUrl}/account`, { waitUntil: "networkidle" });
@@ -23,6 +25,7 @@ try {
   await mobile.goto(`${baseUrl}/consultation`, { waitUntil: "networkidle" });
   const consultationText = await mobile.locator("main").innerText();
   assert.match(consultationText, /人工解读.*合作联系/);
+  assert.match(consultationText, /微信服务方：三禺/);
   assert.match(consultationText, /登录后申请/);
   assert.equal(await mobile.locator('a[href="/chart"]').count() >= 1, true);
 

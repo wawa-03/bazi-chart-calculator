@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listAllThemeNotes, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference } from "./db";
+import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listAllThemeNotes, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference, updateConsultationRequestStatus } from "./db";
 import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
@@ -81,6 +81,10 @@ export const appRouter = router({
       deleteConsultationRequest(ctx.user.id, input.id),
     ),
     adminList: adminProcedure.query(() => listAllConsultationRequests()),
+    adminUpdateStatus: adminProcedure.input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(["pending", "reviewing", "contacted", "scheduled", "closed"]),
+    })).mutation(({ input }) => updateConsultationRequestStatus(input.id, input.status)),
   }),
   annual: router({
     window: publicProcedure.input(z.object({ targetYear: z.number().int().min(1900).max(2200) })).query(({ input }) =>

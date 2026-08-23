@@ -80,7 +80,7 @@ export const consultationRequests = mysqlTable("consultationRequests", {
   contactMethod: mysqlEnum("contactMethod", ["account_email", "wechat", "other"]).notNull(),
   contactDetail: varchar("contactDetail", { length: 180 }).notNull(),
   request: text("request").notNull(),
-  status: mysqlEnum("status", ["pending", "contacted", "closed"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "reviewing", "contacted", "scheduled", "closed"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [

@@ -18,7 +18,9 @@ try {
   assert.match(await page.locator("#life-themes").innerText(), /财务与资源/);
   assert.match(await page.locator("#life-themes").innerText(), /生活节奏/);
   assert.equal(await page.locator(".annual-upgrade-gate").count(), 0);
-  assert.equal(await page.locator(".focus-consult-link").getAttribute("href"), "/consultation?service=deep_reading");
+  assert.equal(await page.locator(".focus-consult-link").getAttribute("href"), "/consultation#wechat-contact");
+  assert.ok(await page.getByRole("button", { name: /分享观历/ }).count() >= 1);
+  assert.equal(await page.locator(".manual-reading img[alt='三禺微信好友二维码']").count(), 1);
   console.log("Free full-reading verification passed: future volume reveals Da Yun/flow-year contrast, all four life themes, and a human-discussion entry without a purchase gate.");
   await context.close();
 } finally {

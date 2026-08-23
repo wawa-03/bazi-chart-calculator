@@ -26,6 +26,8 @@ export type ConsultationPayload = {
   request: string;
 };
 
+export type ConsultationStatus = "pending" | "reviewing" | "contacted" | "scheduled" | "closed";
+
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
@@ -232,4 +234,12 @@ export async function listAllConsultationRequests() {
   const db = await getDb();
   if (!db) throw new Error("数据库暂不可用，请稍后重试。");
   return db.select().from(consultationRequests).orderBy(desc(consultationRequests.createdAt));
+}
+
+export async function updateConsultationRequestStatus(id: number, status: ConsultationStatus) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库暂不可用，请稍后重试。");
+  await db.update(consultationRequests).set({ status, updatedAt: new Date() }).where(eq(consultationRequests.id, id));
+  const updated = await db.select().from(consultationRequests).where(eq(consultationRequests.id, id)).limit(1);
+  return updated[0];
 }

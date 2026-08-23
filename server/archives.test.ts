@@ -14,6 +14,7 @@ const dbMocks = vi.hoisted(() => ({
   listThemeNotes: vi.fn(),
   saveThemeNote: vi.fn(),
   setUserLanguagePreference: vi.fn(),
+  updateConsultationRequestStatus: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
@@ -104,6 +105,18 @@ describe("archives router", () => {
     expect(dbMocks.listConsultationRequests).toHaveBeenCalledWith(42);
     expect(dbMocks.createConsultationRequest).toHaveBeenCalledWith(42, payload);
     expect(dbMocks.deleteConsultationRequest).toHaveBeenCalledWith(42, 12);
+  });
+
+  it("only allows an administrator to advance a consultation request status", async () => {
+    dbMocks.updateConsultationRequestStatus.mockResolvedValue({ id: 12, status: "scheduled" });
+    const userCaller = appRouter.createCaller(contextFor(42));
+    await expect(userCaller.consultations.adminUpdateStatus({ id: 12, status: "scheduled" })).rejects.toThrow();
+
+    const adminContext = contextFor(1);
+    adminContext.user!.role = "admin";
+    const adminCaller = appRouter.createCaller(adminContext);
+    await adminCaller.consultations.adminUpdateStatus({ id: 12, status: "scheduled" });
+    expect(dbMocks.updateConsultationRequestStatus).toHaveBeenCalledWith(12, "scheduled");
   });
 
   it("uses edge country for a display default and persists only an explicit language override", async () => {

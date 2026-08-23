@@ -2,7 +2,7 @@
  * 年度阅读按“引导—正式内容”分层：先给唯一下一步，再按需展开依据、月卷和私有档案。
  */
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, FileDown, HeartHandshake, LockKeyhole, LogIn, NotebookPen, Save, ScrollText, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
+import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, FileDown, HeartHandshake, LockKeyhole, LogIn, NotebookPen, Save, ScrollText, Share2, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
 import "./AnnualManual.css";
 import { startLogin } from "@/const";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
@@ -10,9 +10,11 @@ import { deriveFortuneContrast } from "@/lib/fortuneContrast";
 import { deriveLifeThemes, type LifeThemeKey } from "@/lib/lifeThemes";
 import { manualCopy, manualEntry, manualMonth } from "@/lib/manualLanguage";
 import { downloadThemeReport } from "@/lib/themeReport";
+import { sharePublicPage } from "@/lib/publicShare";
 import { trpc } from "@/lib/trpc";
 import type { BaziInput, BaziResult } from "@/lib/bazi";
 import { Link } from "wouter";
+import { HumanContactCard } from "@/components/HumanContactCard";
 
 type AnnualManualProps = {
   result: BaziResult;
@@ -178,6 +180,15 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     setStorageStatus("完整主题报告已在当前浏览器生成下载；详细住址不会写入报告。 ");
   }
 
+  async function shareManual() {
+    try {
+      const outcome = await sharePublicPage(selectedLocale, `${window.location.origin}/`);
+      setStorageStatus(outcome === "copied" ? (selectedLocale === "en" ? "Public Guanli link copied." : "公开观历链接已复制；不包含本次阅读或私有资料。") : outcome === "unsupported" ? (selectedLocale === "en" ? "Sharing is unavailable in this browser." : "当前浏览器不支持分享。") : (selectedLocale === "en" ? "Shared." : "已分享公开观历链接。"));
+    } catch {
+      setStorageStatus(selectedLocale === "en" ? "Sharing was cancelled." : "已取消分享。");
+    }
+  }
+
   return (
     <section className="manual-section" id="manual" aria-labelledby="manual-title">
       <header className="manual-intro">
@@ -224,7 +235,8 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
               {hasAnnualEntitlement ? <>
               <section className="fortune-contrast-card" aria-labelledby="fortune-contrast-title"><div><span>{selectedLocale === "en" ? "LONGER CONTEXT" : "延展对照"}</span><h4 id="fortune-contrast-title">{fortuneContrast.title}</h4></div><dl><div><dt>{selectedLocale === "en" ? "Da Yun" : "大运"}</dt><dd>{fortuneContrast.activeDaYun?.ganzhi || "—"}</dd></div><div><dt>{selectedLocale === "en" ? "Flow year" : "流年"}</dt><dd>{fortuneContrast.flowYear}</dd></div></dl><p>{fortuneContrast.focus}</p><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the contrast index" : "查看对照索引"}</summary><p>{fortuneContrast.evidence}</p></details><p className="life-theme-boundary">{fortuneContrast.boundary}</p></section>
               {selectedTheme && <section className="life-theme-section" id="life-themes" aria-labelledby="life-theme-title"><header><span>{selectedLocale === "en" ? "PERSONAL THEMES" : "人生主题 / 在未来月卷下方"}</span><h4 id="life-theme-title">{selectedLocale === "en" ? "Choose one area to explore" : "选择一个想先看的方向"}</h4><p>{selectedLocale === "en" ? "These are reflective prompts linked to visible markers in your chart—not forecasts of outcomes." : "这些是与排盘可见标记关联的反思线索，不是对结果的预言。"}</p></header><div className="life-theme-tabs" role="tablist" aria-label={selectedLocale === "en" ? "Life themes" : "人生主题"}>{themes.map((theme) => { const Icon = themeIcons[theme.key]; return <button key={theme.key} type="button" role="tab" aria-selected={theme.key === activeTheme} className={theme.key === activeTheme ? "is-active" : ""} onClick={() => setActiveTheme(theme.key)}><Icon /><span>{theme.title}</span></button>; })}</div><article className="life-theme-card" role="tabpanel"><div className="life-theme-card-head"><span>{selectedTheme.label}</span><b>{selectedTheme.title}</b></div><p className="life-theme-focus">{selectedTheme.focus}</p><dl><div><dt>{selectedLocale === "en" ? "A question" : "一个问题"}</dt><dd>{selectedTheme.question}</dd></div><div><dt>{selectedLocale === "en" ? "A small action" : "一个小行动"}</dt><dd>{selectedTheme.action}</dd></div></dl><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the chart index for this theme" : "查看此主题的排盘索引"}</summary><p>{selectedTheme.evidence}</p></details><p className="life-theme-boundary">{selectedTheme.boundary}</p><section className="theme-note-editor"><header><NotebookPen /><div><b>{selectedLocale === "en" ? "Private reflection" : "私有主题回顾"}</b><p>{activeArchiveId ? (selectedLocale === "en" ? "This note belongs only to the currently saved reading." : "这条笔记只属于当前已保存的命书。") : (selectedLocale === "en" ? "Save or load this reading before adding a private note." : "请先保存或载入这份命书，再写下私有笔记。")}</p></div></header>{isAuthenticated ? <><textarea value={noteDraft} maxLength={2000} placeholder={selectedLocale === "en" ? "Write a short reflection…" : "写下这一次阅读后的回顾…"} onChange={(event) => setNoteDraft(event.target.value)} disabled={!activeArchiveId} /><div><button type="button" onClick={saveCurrentThemeNote} disabled={!activeArchiveId || saveThemeNote.isPending}><Save /> {selectedLocale === "en" ? "Save reflection" : "保存回顾"}</button>{savedNote && <button type="button" className="quiet" onClick={() => activeArchiveId && removeThemeNote.mutate({ archiveId: activeArchiveId, themeKey: activeTheme })} disabled={removeThemeNote.isPending}><Trash2 /> {selectedLocale === "en" ? "Delete" : "删除"}</button>}</div></> : <button type="button" onClick={startLogin}><LogIn /> {selectedLocale === "en" ? "Log in to save a reflection" : "登录后保存主题回顾"}</button>}</section></article></section>}
-              <div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button>{isAuthenticated && <button type="button" className="quiet-action" onClick={exportCurrentThemeReport} disabled={!activeArchiveId}><FileDown /> {selectedLocale === "en" ? "Export full theme report" : "导出完整主题报告"}</button>}<Link className="quiet-action focus-consult-link" href="/consultation?service=deep_reading"><HeartHandshake /> {selectedLocale === "en" ? "Discuss this reading with a person" : "就这份阅读申请人工讨论"}</Link></div>
+              <div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button>{isAuthenticated && <button type="button" className="quiet-action" onClick={exportCurrentThemeReport} disabled={!activeArchiveId}><FileDown /> {selectedLocale === "en" ? "Export full theme report" : "导出完整主题报告"}</button>}<button type="button" className="quiet-action" onClick={shareManual}><Share2 /> {selectedLocale === "en" ? "Share Guanli" : "分享观历"}</button><Link className="quiet-action focus-consult-link" href="/consultation#wechat-contact"><HeartHandshake /> {selectedLocale === "en" ? "Discuss this reading with a person" : "微信扫码联系人工讨论"}</Link></div>
+              <HumanContactCard compact />
               {showMonthPicker && <div className="future-month-picker" role="list" aria-label={copy.future}>{Array.from({ length: 12 }, (_, index) => index).map((index) => { const isOpen = Boolean(annualAccess?.openMonths.includes(index + 1)); return <button key={index} type="button" role="listitem" disabled={!isOpen} className={activeMonth === index ? "is-active" : ""} onClick={() => setActiveMonth(index)}><span>{String(index + 1).padStart(2, "0")}</span><b>{manualMonth(selectedLocale, index)}</b>{isOpen ? <Eye /> : <LockKeyhole />}</button>; })}</div>}
               <details className="reading-details"><summary><ChevronDown /> {copy.basis}</summary><div><p><b>服务端节气窗口：</b>使用 {annualAccess?.timezone || "北京时间"} 计算；下一节为“{annualAccess?.nextJie || "校验中"}”，当前可读 {annualAccess?.openMonths.length || 0} 卷。</p><p><b>你的排盘信息：</b>日柱 {dayPillar}，用于排盘时刻 {result.correctedTime}。{profile.birthPlace ? `出生地点：${profile.birthPlace}。` : ""}</p></div></details>
               <details className="reading-details"><summary><ChevronDown /> {copy.method}</summary><div><p><b>{copy.source}：</b>{annualMethod.data?.calendarLibrary || "lunar-javascript"}；版本 {annualMethod.data?.version || "校验中"}。</p><p>{annualMethod.data?.annualWindow}</p><p>{annualMethod.data?.contentGeneration}</p><p>{annualMethod.data?.limitation}</p></div></details>

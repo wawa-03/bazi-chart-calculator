@@ -1,0 +1,1 @@
+ALTER TABLE `consultationRequests` MODIFY COLUMN `status` enum('pending','reviewing','contacted','scheduled','closed') NOT NULL DEFAULT 'pending';

@@ -17,6 +17,7 @@ import {
   MapPin,
   Orbit,
   RotateCcw,
+  Share2,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { AnnualManual } from "@/components/AnnualManual";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi, formatCoordinate } from "@/lib/bazi";
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
+import { sharePublicPage } from "@/lib/publicShare";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { siteCopy } from "@/lib/siteCopy";
 import { SiteFooter, SiteHeader } from "@/components/SiteShell";
@@ -91,6 +93,7 @@ export default function Home() {
   const [formError, setFormError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
   const correctionPreview = useMemo(() => (Number(longitudeText) - 120) * 4, [longitudeText]);
 
@@ -169,6 +172,18 @@ export default function Home() {
     }
   }
 
+  async function handlePublicShare() {
+    setIsSharing(true);
+    try {
+      const outcome = await sharePublicPage(locale, `${window.location.origin}/`);
+      setExportStatus(outcome === "copied" ? (locale === "en" ? "Public link copied." : locale === "zh-TW" ? "公開連結已複製。" : "公开链接已复制。") : outcome === "unsupported" ? (locale === "en" ? "Sharing is unavailable in this browser." : locale === "zh-TW" ? "此瀏覽器不支援分享。" : "当前浏览器不支持分享。") : (locale === "en" ? "Shared." : locale === "zh-TW" ? "已分享。" : "已分享。"));
+    } catch {
+      setExportStatus(locale === "en" ? "Sharing was cancelled." : locale === "zh-TW" ? "已取消分享。" : "已取消分享。");
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
   const coordinateLabel = copy.result.coordinates.replace("{longitude}", formatCoordinate(result.longitude)).replace("{latitude}", formatCoordinate(result.latitude));
 
   return (
@@ -217,7 +232,7 @@ export default function Home() {
             <div className="time-ledger"><div><span>{copy.result.originalTime}</span><b>{result.originalTime}</b></div><ArrowUpRight /><div><span>{copy.result.chartTime}</span><b>{result.correctedTime}</b></div><em className="coordinate-display">{coordinateLabel}</em></div>
             <div className="pillars-grid">{result.pillars.map((pillar, index) => <PillarCard key={pillar.key} pillar={pillar} index={index} labels={copy.result} />)}</div>
             <div className="result-caption"><span className="seal-stamp">{locale === "en" ? "CHECKED" : "已校"}</span><p><b>{copy.result.rule}</b></p></div>
-            <section className="export-panel" aria-label={copy.result.exportKicker}><div className="export-panel-copy"><span>{copy.result.exportKicker}</span><p>{copy.result.exportBody}</p></div><div className="export-actions"><Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>{isExporting ? <LoaderCircle className="export-spin" /> : <Download />}{isExporting ? copy.result.generating : copy.result.download}</Button><button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>{isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("copied") || exportStatus.includes("已复制") || exportStatus.includes("已複製") ? <Check /> : <Copy />}{isCopying ? copy.result.copying : copy.result.copy}</button></div><p className="export-status" aria-live="polite">{exportStatus}</p></section>
+            <section className="export-panel" aria-label={copy.result.exportKicker}><div className="export-panel-copy"><span>{copy.result.exportKicker}</span><p>{copy.result.exportBody}</p><small>{locale === "en" ? "Sharing only sends the public Guanli link—never your chart, birth details, or saved notes." : locale === "zh-TW" ? "分享只會傳送公開觀曆連結，不包含排盤、出生資料或私人筆記。" : "分享只会发送公开观历链接，不包含排盘、出生资料或私有笔记。"}</small></div><div className="export-actions"><Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>{isExporting ? <LoaderCircle className="export-spin" /> : <Download />}{isExporting ? copy.result.generating : copy.result.download}</Button><button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>{isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("copied") || exportStatus.includes("已复制") || exportStatus.includes("已複製") ? <Check /> : <Copy />}{isCopying ? copy.result.copying : copy.result.copy}</button><button className="copy-text-button share-public-button" type="button" onClick={handlePublicShare} disabled={isSharing}><Share2 />{isSharing ? "…" : locale === "en" ? "Share Guanli" : locale === "zh-TW" ? "分享觀曆" : "分享观历"}</button></div><p className="export-status" aria-live="polite">{exportStatus}</p></section>
             <div className="detail-grid"><article className="detail-card solar-card"><div className="detail-top"><span>{copy.result.jieQi}</span><BookOpenText /></div><strong>{result.currentJieQi}</strong><p>{copy.result.previous}：{result.previousJie}<i /> {copy.result.next}：{result.nextJie}</p></article><article className="detail-card"><div className="detail-top"><span>{copy.result.additional}</span><span className="small-mark">A</span></div><dl><div><dt>{copy.result.fetalOrigin}</dt><dd>{result.taiYuan}</dd></div><div><dt>{copy.result.lifePalace}</dt><dd>{result.mingGong}</dd></div><div><dt>{copy.result.bodyPalace}</dt><dd>{result.shenGong}</dd></div></dl></article><article className="detail-card direction-card"><div className="detail-top"><span>{copy.result.direction}</span><span className="small-mark">B</span></div><strong>{result.direction}</strong><p>{copy.result.start}：{result.startYunText}<br />{copy.result.start}：{result.startYunDate}</p></article></div>
             {result.daYun.length > 0 && <section className="fortune-section" aria-labelledby="fortune-title"><div className="fortune-heading"><h3 id="fortune-title">{copy.result.fortuneDirection}</h3><span>{copy.result.fortuneHint}</span></div><div className="fortune-strip">{result.daYun.map((item) => <div key={`${item.ganzhi}-${item.startYear}`}><b>{item.ganzhi}</b><span>{item.startAge}–{item.endAge} {copy.result.year}</span><small>{item.startYear} {copy.result.start}</small></div>)}</div></section>}
           </section>
