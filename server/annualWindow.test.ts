@@ -7,9 +7,11 @@ describe("getAnnualWindow", () => {
     expect(window).toMatchObject({ timezone: "Asia/Shanghai", currentYear: 2026, nextJie: "白露", startMonth: 9, openMonths: [9, 10, 11, 12] });
   });
 
-  it("opens all months for a future target year and none for a past year", () => {
-    const now = new Date("2026-08-22T04:00:00.000Z");
-    expect(getAnnualWindow(2027, now).openMonths).toHaveLength(12);
-    expect(getAnnualWindow(2025, now).openMonths).toEqual([]);
+  it("opens next year only after June in Beijing time and keeps past years closed", () => {
+    const beforeJuly = new Date("2026-06-22T04:00:00.000Z");
+    const afterJune = new Date("2026-08-22T04:00:00.000Z");
+    expect(getAnnualWindow(2027, beforeJuly)).toMatchObject({ nextYearAvailable: false, openMonths: [] });
+    expect(getAnnualWindow(2027, afterJune)).toMatchObject({ nextYearAvailable: true, openMonths: Array.from({ length: 12 }, (_, index) => index + 1) });
+    expect(getAnnualWindow(2025, afterJune).openMonths).toEqual([]);
   });
 });

@@ -22,6 +22,7 @@ export type AnnualWindow = {
   nextJie: string;
   startMonth: number | null;
   openMonths: number[];
+  nextYearAvailable: boolean;
 };
 
 function shanghaiParts(now: Date) {
@@ -47,17 +48,19 @@ export function getAnnualWindow(targetYear: number, now = new Date()): AnnualWin
   const current = shanghaiParts(now);
   const solar = Solar.fromYmdHms(current.year, current.month, current.day, current.hour, current.minute, current.second);
   const nextJie = solar.getLunar().getNextJie().getName();
+  const nextYearAvailable = current.month >= 7;
 
   if (targetYear > current.year) {
-    return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth: 1, openMonths: Array.from({ length: 12 }, (_, index) => index + 1) };
+    const canOpen = targetYear > current.year + 1 || nextYearAvailable;
+    return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth: canOpen ? 1 : null, openMonths: canOpen ? Array.from({ length: 12 }, (_, index) => index + 1) : [], nextYearAvailable };
   }
   if (targetYear < current.year) {
-    return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth: null, openMonths: [] };
+    return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth: null, openMonths: [], nextYearAvailable };
   }
 
   const startMonth = JIE_TO_FUTURE_LUNAR_MONTH[nextJie];
   if (!startMonth) {
     throw new Error(`无法将下一节“${nextJie}”映射为未来月卷；请检查历法规则版本。`);
   }
-  return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth, openMonths: Array.from({ length: 13 - startMonth }, (_, index) => startMonth + index) };
+  return { timezone: "Asia/Shanghai", currentYear: current.year, targetYear, nextJie, startMonth, openMonths: Array.from({ length: 13 - startMonth }, (_, index) => startMonth + index), nextYearAvailable };
 }

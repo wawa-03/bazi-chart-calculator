@@ -112,7 +112,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     const response = await annualWindow.refetch();
     const access = response.data;
     if (!access?.openMonths.length) {
-      setStorageStatus("这一年没有未来月卷。换个年份试试。");
+      setStorageStatus(access?.nextYearAvailable === false && profile.year > access.currentYear ? "明年命书在六月后开放。" : "这一年没有未来月卷。换个年份试试。");
       return;
     }
     setStarted(true);
@@ -214,7 +214,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
               setActiveMonth(null);
             }}>
               <option value={currentYear}>{currentYear}{selectedLocale === "en" ? "" : " 年"}</option>
-              <option value={currentYear + 1}>{currentYear + 1}{selectedLocale === "en" ? "" : " 年"}</option>
+              <option value={currentYear + 1} disabled={annualAccess?.nextYearAvailable === false}>{currentYear + 1}{selectedLocale === "en" ? "" : " 年"}{annualAccess?.nextYearAvailable === false ? (selectedLocale === "en" ? " · after June" : selectedLocale === "zh-TW" ? " · 六月後" : " · 六月后") : ""}</option>
             </select>
             <button className="manual-create-button" type="submit" disabled={annualWindow.isFetching}><Sparkles /> {annualWindow.isFetching ? "…" : copy.start} <ChevronRight /></button>
           </form>
