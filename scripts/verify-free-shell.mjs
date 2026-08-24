@@ -53,6 +53,14 @@ try {
   assert.match(await fortuneOverview.innerText(), /当前大运|CURRENT DA YUN/);
   assert.match(await fortuneOverview.innerText(), /当前流年|FLOWING YEAR/);
   assert.match(await fortuneOverview.innerText(), /月令|MONTH COMMAND/);
+  const ruleStatus = fortuneOverview.locator(".fate-rule-status");
+  assert.equal(await ruleStatus.isVisible(), true);
+  assert.match(await ruleStatus.innerText(), /规则推演|RULE-BASED READING/);
+  assert.match(await ruleStatus.innerText(), /尚未人工复核|not been human-reviewed/);
+  const yearComparison = fortuneOverview.locator(".fate-year-comparison");
+  assert.equal(await yearComparison.isVisible(), true);
+  assert.match(await yearComparison.innerText(), /三年流年对照|THREE-YEAR COMPARISON/);
+  assert.equal(await yearComparison.locator(".fate-year-card").count(), 3);
   assert.equal(await fortuneOverview.locator(".fortune-direction-card").count(), 4);
   const financeDirection = fortuneOverview.locator(".fortune-direction-card.is-finance");
   assert.match(await financeDirection.innerText(), /财运与财星|WEALTH STAR/);
@@ -101,6 +109,12 @@ try {
   assert.match(accountText, /排盘不用登录/);
   assert.equal(await desktop.getByRole("button", { name: /登录/ }).count(), 1);
 
+  await desktop.goto(`${baseUrl}/review-desk`, { waitUntil: "networkidle" });
+  const reviewDeskGate = await desktop.locator("main").innerText();
+  assert.match(reviewDeskGate, /登录后进入工作台/);
+  assert.match(reviewDeskGate, /只供获得授权的命理师使用/);
+  assert.equal(await desktop.locator(".review-inbox, .review-editor, .rule-studio").count(), 0);
+
   const mobile = await browser.newPage({ viewport: { width: 375, height: 812 } });
   await mobile.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
   const mobileTitle = mobile.locator(".landing-hero h1");
@@ -124,6 +138,7 @@ try {
   await mobile.locator(".chart-loading").waitFor({ state: "hidden", timeout: 2000 });
   await mobile.waitForSelector(".fate-result-overview", { state: "visible" });
   assert.match(await mobile.locator(".fate-result-overview").innerText(), /当前大运|CURRENT DA YUN/);
+  assert.equal(await mobile.locator(".fate-year-comparison .fate-year-card").count(), 3);
   assert.equal(await mobile.locator(".fate-result-overview .fortune-direction-card").count(), 4);
   assert.equal(await mobile.locator(".result-details").evaluate((element) => element.open), false);
   assert.equal(await mobile.locator(".export-panel").isVisible(), false);

@@ -7,14 +7,23 @@ const dbMocks = vi.hoisted(() => ({
   deleteConsultationRequest: vi.fn(),
   deleteSavedArchive: vi.fn(),
   deleteThemeNote: vi.fn(),
+  getFateReviewForOwner: vi.fn(),
   listAllConsultationRequests: vi.fn(),
   listAllThemeNotes: vi.fn(),
   listConsultationRequests: vi.fn(),
+  listFateReviewRevisions: vi.fn(),
+  listFateRuleVersions: vi.fn(),
+  listPublishedFateRules: vi.fn(),
   listSavedArchives: vi.fn(),
+  listSubmittedFateReviews: vi.fn(),
   listThemeNotes: vi.fn(),
   saveThemeNote: vi.fn(),
   setUserLanguagePreference: vi.fn(),
   updateConsultationRequestStatus: vi.fn(),
+  updateFateReview: vi.fn(),
+  requestFateReview: vi.fn(),
+  createFateRuleDraft: vi.fn(),
+  publishFateRuleVersion: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
@@ -117,6 +126,53 @@ describe("archives router", () => {
     const adminCaller = appRouter.createCaller(adminContext);
     await adminCaller.consultations.adminUpdateStatus({ id: 12, status: "scheduled" });
     expect(dbMocks.updateConsultationRequestStatus).toHaveBeenCalledWith(12, "scheduled");
+  });
+
+  it("scopes a human fate-review request and result to the archive owner", async () => {
+    dbMocks.getFateReviewForOwner.mockResolvedValue(null);
+    dbMocks.requestFateReview.mockResolvedValue({ id: 9, reviewStatus: "pending" });
+    const caller = appRouter.createCaller(contextFor(42));
+
+    await caller.fateReviews.mine({ archiveId: 7 });
+    await caller.fateReviews.request({ archiveId: 7 });
+
+    expect(dbMocks.getFateReviewForOwner).toHaveBeenCalledWith(42, 7);
+    expect(dbMocks.requestFateReview).toHaveBeenCalledWith(42, 7);
+  });
+
+  it("allows astrologers and administrators, but not ordinary users, to edit submitted reviews and rules", async () => {
+    dbMocks.listSubmittedFateReviews.mockResolvedValue([]);
+    dbMocks.listFateReviewRevisions.mockResolvedValue([]);
+    dbMocks.listFateRuleVersions.mockResolvedValue([]);
+    dbMocks.updateFateReview.mockResolvedValue({ id: 9, reviewStatus: "in_review" });
+    dbMocks.createFateRuleDraft.mockResolvedValue({ id: 3, ruleKey: "special-combination" });
+    const ordinary = appRouter.createCaller(contextFor(42));
+    await expect(ordinary.fateReviews.reviewerList()).rejects.toThrow();
+    await expect(ordinary.fateReviews.reviewerHistory({ reviewId: 9 })).rejects.toThrow();
+    await expect(ordinary.fateRules.reviewerList()).rejects.toThrow();
+
+    const astrologerContext = contextFor(8);
+    astrologerContext.user!.role = "astrologer";
+    const astrologer = appRouter.createCaller(astrologerContext);
+    await astrologer.fateReviews.reviewerList();
+    await astrologer.fateReviews.reviewerHistory({ reviewId: 9 });
+    await astrologer.fateRules.reviewerList();
+    await astrologer.fateReviews.reviewerSave({ id: 9, reviewStatus: "in_review", congGeVerdict: "undetermined" });
+    await astrologer.fateRules.reviewerCreateDraft({ ruleKey: "special-combination", title: "特殊合化", body: "仅在月令、根气与全局条件具备时讨论化气。" });
+
+    expect(dbMocks.listSubmittedFateReviews).toHaveBeenCalledOnce();
+    expect(dbMocks.listFateReviewRevisions).toHaveBeenCalledWith(9);
+    expect(dbMocks.listFateRuleVersions).toHaveBeenCalledOnce();
+    expect(dbMocks.updateFateReview).toHaveBeenCalledWith(8, expect.objectContaining({ id: 9, reviewStatus: "in_review" }));
+    expect(dbMocks.createFateRuleDraft).toHaveBeenCalledWith(8, expect.objectContaining({ ruleKey: "special-combination" }));
+  });
+
+  it("exposes only published rule copy to the public reading surface", async () => {
+    dbMocks.listPublishedFateRules.mockResolvedValue([{ id: 4, ruleKey: "special-combination", version: 2, status: "published" }]);
+    const caller = appRouter.createCaller({ user: null, req: { headers: {} } as TrpcContext["req"], res: {} as TrpcContext["res"] });
+
+    await expect(caller.fateRules.published()).resolves.toEqual([{ id: 4, ruleKey: "special-combination", version: 2, status: "published" }]);
+    expect(dbMocks.listPublishedFateRules).toHaveBeenCalledOnce();
   });
 
   it("uses edge country for a display default and persists only an explicit language override", async () => {

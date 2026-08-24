@@ -38,6 +38,17 @@ export type DerivedMonthEntry = {
   evidence: string;
 };
 
+export type ThreeYearFortune = {
+  year: number;
+  ganzhi: string;
+  tenGod: string;
+  daYun: string;
+  alignment: "supports" | "needs-weighing" | "contextual";
+  focus: string;
+  evidence: string;
+  interactions: string[];
+};
+
 const STEMS = "甲乙丙丁戊己庚辛壬癸";
 const BRANCHES = "子丑寅卯辰巳午未申酉戌亥";
 
@@ -420,4 +431,39 @@ export function deriveMonthReading(result: BaziResult, input: BaziInput, year: n
     ? `${natalLinks.length ? `Branch links: ${natalLinks.join(" ")}` : "No direct branch clash, combination, harm, or punishment is detected against the natal branches."} ${analysis.currentLuck.text} ${analysis.currentLuck.flowYearText}`
     : `${natalLinks.length ? `流月支${branch}与原局：${natalLinks.join("、")}。` : `流月支${branch}与原局未见直接冲合刑害。`}${analysis.currentLuck.text}${analysis.currentLuck.flowYearText}`;
   return { title, focus, prompt, note, evidence: locale === "en" ? `Basis: ${ganzhi}, natal month command ${analysis.monthCommand.branch}, and Da Yun ${analysis.currentLuck.ganzhi}.` : `依据：流月${ganzhi}、原局月令${analysis.monthCommand.branch}与${analysis.currentLuck.ganzhi}大运。` };
+}
+
+/**
+ * Compare the current flowing year with the next two years. Every card keeps
+ * the month-command, useful-element, Da Yun, and branch-relation context, so
+ * the comparison never treats a single yearly GanZhi as a standalone verdict.
+ */
+export function deriveThreeYearComparison(result: BaziResult, input: BaziInput, locale: ManualLocale, startYear = new Date().getFullYear()): ThreeYearFortune[] {
+  return [0, 1, 2].map((offset) => {
+    const year = startYear + offset;
+    const analysis = deriveFateAnalysis(result, input, locale, year);
+    const [stem] = Array.from(analysis.currentLuck.flowYear);
+    const stemElement = STEM_ELEMENT[stem];
+    const alignment: ThreeYearFortune["alignment"] = analysis.useGod.favored.includes(stemElement)
+      ? "supports"
+      : analysis.useGod.avoid.includes(stemElement)
+        ? "needs-weighing"
+        : "contextual";
+    const focus = locale === "en"
+      ? `${analysis.currentLuck.flowYearText} Active Da Yun: ${analysis.currentLuck.ganzhi}.`
+      : `${analysis.currentLuck.flowYearText} 同看${analysis.currentLuck.ganzhi}大运。`;
+    const evidence = locale === "en"
+      ? `Basis: month command ${analysis.monthCommand.branch}; Day Master ${analysis.dayMaster}; useful elements ${analysis.useGod.favored.map((item) => elementName(item, locale)).join(" / ")}; Da Yun ${analysis.currentLuck.ganzhi}.`
+      : `依据：月令${analysis.monthCommand.branch}、日主${analysis.dayMaster}、喜用${analysis.useGod.favored.join("、")}与${analysis.currentLuck.ganzhi}大运。`;
+    return {
+      year,
+      ganzhi: analysis.currentLuck.flowYear,
+      tenGod: analysis.currentLuck.flowYearTenGod,
+      daYun: analysis.currentLuck.ganzhi,
+      alignment,
+      focus,
+      evidence,
+      interactions: analysis.currentLuck.flowYearInteractions,
+    };
+  });
 }

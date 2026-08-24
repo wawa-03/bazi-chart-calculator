@@ -2,13 +2,14 @@
  * 年度阅读按“引导—正式内容”分层：先给唯一下一步，再按需展开依据、月卷和私有档案。
  */
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, FileDown, HeartHandshake, LockKeyhole, LogIn, NotebookPen, Save, ScrollText, Share2, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
+import { Archive, BadgeCheck, BriefcaseBusiness, ChevronDown, ChevronRight, Compass, Eye, FileDown, HeartHandshake, LockKeyhole, LogIn, NotebookPen, Save, ScrollText, Share2, ShieldCheck, Sparkles, TimerReset, Trash2, WalletCards } from "lucide-react";
 import "./AnnualManual.css";
 import { startLogin } from "@/const";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { deriveFortuneContrast } from "@/lib/fortuneContrast";
 import { type LifeThemeKey } from "@/lib/lifeThemes";
 import { deriveFateAnalysis, deriveMonthReading } from "@/lib/fateAnalysis";
+import { describeFateReviewStatus } from "@/lib/fateReviewStatus";
 import { manualCopy, manualMonth } from "@/lib/manualLanguage";
 import { downloadThemeReport } from "@/lib/themeReport";
 import { sharePublicPage } from "@/lib/publicShare";
@@ -52,6 +53,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   const archivesQuery = trpc.archives.list.useQuery(undefined, { enabled: isAuthenticated && showArchive });
   const noteQueryInput = useMemo(() => ({ archiveId: activeArchiveId ?? 0 }), [activeArchiveId]);
   const notesQuery = trpc.themeNotes.list.useQuery(noteQueryInput, { enabled: isAuthenticated && activeArchiveId !== null });
+  const fateReviewQuery = trpc.fateReviews.mine.useQuery(noteQueryInput, { enabled: isAuthenticated && activeArchiveId !== null });
   const saveArchive = trpc.archives.save.useMutation({
     onSuccess: (record) => {
       setActiveArchiveId(record.id);
@@ -84,6 +86,14 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     onError: (error) => setStorageStatus(error.message || "没删掉，请再试一次。"),
   });
 
+  const requestFateReview = trpc.fateReviews.request.useMutation({
+    onSuccess: (review) => {
+      setStorageStatus(review?.reviewStatus === "pending" ? "已提交人工复核；仅授权命理师可查看此档案。" : "这份命书已有复核记录。" );
+      archiveUtils.fateReviews.mine.invalidate(noteQueryInput);
+    },
+    onError: (error) => setStorageStatus(error.message || "暂时无法提交复核。"),
+  });
+
   const annualAccess = annualWindow.data;
   const copy = manualCopy[selectedLocale];
   const profileName = profile.name.trim() || (selectedLocale === "en" ? "you" : selectedLocale === "zh-TW" ? "你" : "你");
@@ -98,6 +108,7 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
   ], [fate]);
   const selectedTheme = themes.find((theme) => theme.key === activeTheme) || themes[0];
   const fortuneContrast = useMemo(() => deriveFortuneContrast(result, profile.year, selectedLocale), [profile.year, result, selectedLocale]);
+  const fateReviewStatus = describeFateReviewStatus(fateReviewQuery.data ?? null, selectedLocale);
   const savedNote = notesQuery.data?.find((note) => note.themeKey === activeTheme);
   const themeIcons = { relationship: HeartHandshake, career: BriefcaseBusiness, finance: WalletCards, rhythm: TimerReset } as const;
   // The annual manual, life themes, and report remain openly available. Any
@@ -171,6 +182,15 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
     saveThemeNote.mutate({ archiveId: activeArchiveId, themeKey: activeTheme, content });
   }
 
+  function requestCurrentFateReview() {
+    if (!isAuthenticated) return startLogin();
+    if (!activeArchiveId) {
+      setStorageStatus("先保存这份命书，再由你决定是否提交人工复核。");
+      return;
+    }
+    requestFateReview.mutate({ archiveId: activeArchiveId });
+  }
+
   function exportCurrentThemeReport() {
     if (!activeArchiveId) {
       setStorageStatus("先保存命书，再导出报告。");
@@ -240,9 +260,11 @@ export function AnnualManual({ result, input, isAuthenticated, onRestoreChart }:
               {activeEntry && activeMonth !== null && <article className="focus-reading-card" aria-live="polite"><div className="focus-reading-meta"><span>{copy.first} / {profile.year}</span><b>{manualMonth(selectedLocale, activeMonth)}</b></div><h4>{activeEntry.title}</h4><p className="focus-personal-line">{selectedLocale === "en" ? <>Flowing month is read with your <strong>{dayPillar}</strong> Day Pillar, month command, Da Yun, and flowing year.</> : <>流月与日柱、月令、大运、流年同看。</>}</p><section><span>{selectedLocale === "en" ? "FLOWING MONTH" : "流月"}</span><p>{activeEntry.focus}</p></section><section><span>{selectedLocale === "en" ? "NATAL LANDING" : "命局"}</span><p>{activeEntry.prompt}</p></section><section><span>{selectedLocale === "en" ? "LUCK CYCLE" : "行运"}</span><p>{activeEntry.note}</p></section><details className="monthly-evidence"><summary><ChevronDown /> {selectedLocale === "en" ? "See derivation" : "看推演依据"}</summary><p>{activeEntry.evidence}</p></details><p className="monthly-disclaimer">{selectedLocale === "en" ? "Traditional chart interpretation only; it does not guarantee events or provide medical, legal, investment, or major life-decision advice." : selectedLocale === "zh-TW" ? "此為命理判讀，不保證事件結果，也不作醫療、法律、投資或重大人生決策依據。" : "这是命理判读，不保证事件结果，也不作为医疗、法律、投资或重大人生决策依据。"}</p></article>}
               {hasAnnualEntitlement ? <>
               <details className="reading-details fortune-contrast-details"><summary><ChevronDown /> {selectedLocale === "en" ? "Longer context" : "延展对照"}</summary><section className="fortune-contrast-card" aria-labelledby="fortune-contrast-title"><div><span>{selectedLocale === "en" ? "LONGER CONTEXT" : "延展对照"}</span><h4 id="fortune-contrast-title">{fortuneContrast.title}</h4></div><dl><div><dt>{selectedLocale === "en" ? "Da Yun" : "大运"}</dt><dd>{fortuneContrast.activeDaYun?.ganzhi || "—"}</dd></div><div><dt>{selectedLocale === "en" ? "Flow year" : "流年"}</dt><dd>{fortuneContrast.flowYear}</dd></div></dl><p>{fortuneContrast.focus}</p><details><summary><ChevronDown /> {selectedLocale === "en" ? "See the contrast index" : "查看对照索引"}</summary><p>{fortuneContrast.evidence}</p></details><p className="life-theme-boundary">{fortuneContrast.boundary}</p></section></details>
+              {fateReviewQuery.data?.reviewStatus === "published" && <section className="fate-review-result"><header><BadgeCheck /><div><span>{fateReviewStatus.kicker}</span><h4>{fateReviewQuery.data.structureVerdict || fateReviewStatus.label}</h4></div></header>{fateReviewQuery.data.displayCopy && <p>{fateReviewQuery.data.displayCopy}</p>}<details><summary><ChevronDown /> {selectedLocale === "en" ? "See review basis" : "看复核依据"}</summary><p>{fateReviewQuery.data.rationale || (selectedLocale === "en" ? "The reviewer did not add public-facing basis notes." : "命理师未添加可见依据说明。")}</p>{fateReviewQuery.data.specialCombinationVerdict && <p>{selectedLocale === "en" ? "Special combination: " : "特殊合化："}{fateReviewQuery.data.specialCombinationVerdict}</p>}</details><small>{selectedLocale === "en" ? "A human review remains conditional and does not guarantee an event." : "人工复核仍为条件性命理解读，不保证事件结果。"}</small></section>}
               {selectedTheme && !showThemes && <section className="theme-pause-card" aria-label="可选人生主题"><span>{selectedLocale === "en" ? "OPTIONAL" : "可选阅读"}</span><h4>{selectedLocale === "en" ? "Themes can wait." : "主题，想看再打开。"}</h4><p>{selectedLocale === "en" ? "You do not need an answer now. Stay with this volume, or open a theme when you want." : "现在不用给自己一个答案。先停在这一卷，想看时再打开主题。"}</p><div className="theme-pause-actions"><button type="button" onClick={() => setShowThemes(true)}><Sparkles /> {selectedLocale === "en" ? "Open themes" : "打开主题"}</button><a href="#calculator"><Compass /> {selectedLocale === "en" ? "Back to chart" : "回到排盘"}</a></div></section>}
               {selectedTheme && <section className="life-theme-section" id="life-themes" aria-labelledby="life-theme-title"><header><span>{selectedLocale === "en" ? "FATE DOMAINS" : "命局落点"}</span><h4 id="life-theme-title">{selectedLocale === "en" ? "Read one domain" : "再看一个落点"}</h4><p>{selectedLocale === "en" ? "Each domain shows its natal basis and the active luck-cycle relation." : "每一项都先列命局依据，再看当前行运。"}</p><button className="theme-pause-button" type="button" onClick={() => setShowThemes(false)}>{selectedLocale === "en" ? "Pause domains" : "先停在这里"}</button></header><div className="life-theme-tabs" role="tablist" aria-label={selectedLocale === "en" ? "Fate domains" : "命局落点"}>{themes.map((theme) => { const Icon = themeIcons[theme.key]; return <button key={theme.key} type="button" role="tab" aria-selected={theme.key === activeTheme} className={theme.key === activeTheme ? "is-active" : ""} onClick={() => setActiveTheme(theme.key)}><Icon /><span>{theme.title}</span></button>; })}</div><article className="life-theme-card" role="tabpanel"><div className="life-theme-card-head"><span>{selectedTheme.label}</span><b>{selectedTheme.title}</b></div><p className="life-theme-focus">{selectedTheme.focus}</p><dl><div><dt>{selectedLocale === "en" ? "Natal judgment" : "命局判断"}</dt><dd>{selectedTheme.question}</dd></div><div><dt>{selectedLocale === "en" ? "Luck-cycle landing" : "行运落点"}</dt><dd>{selectedTheme.action}</dd></div></dl><details><summary><ChevronDown /> {selectedLocale === "en" ? "See derivation" : "看推演依据"}</summary><p>{selectedTheme.evidence}</p></details><p className="life-theme-boundary">{selectedTheme.boundary}</p><section className="theme-note-editor"><header><NotebookPen /><div><b>{selectedLocale === "en" ? "Private note" : "私有笔记"}</b><p>{activeArchiveId ? (selectedLocale === "en" ? "Only in this saved reading." : "只存这份命书。") : (selectedLocale === "en" ? "Save this reading first." : "先保存这份命书。")}</p></div></header>{isAuthenticated ? <><textarea value={noteDraft} maxLength={2000} placeholder={selectedLocale === "en" ? "Write a thought…" : "写一点想法…"} onChange={(event) => setNoteDraft(event.target.value)} disabled={!activeArchiveId} /><div><button type="button" onClick={saveCurrentThemeNote} disabled={!activeArchiveId || saveThemeNote.isPending}><Save /> {selectedLocale === "en" ? "Save note" : "保存笔记"}</button>{savedNote && <button type="button" className="quiet" onClick={() => activeArchiveId && removeThemeNote.mutate({ archiveId: activeTheme && activeArchiveId, themeKey: activeTheme })} disabled={removeThemeNote.isPending}><Trash2 /> {selectedLocale === "en" ? "Delete" : "删除"}</button>}</div></> : <button type="button" onClick={startLogin}><LogIn /> {selectedLocale === "en" ? "Log in to save" : "登录后保存"}</button>}</section></article></section>}
               <details className="reading-details focus-actions-details"><summary><ChevronDown /> {selectedLocale === "en" ? "More options" : "更多操作"}</summary><div className="focus-actions"><button type="button" onClick={() => setShowMonthPicker((value) => !value)}><Eye /> {showMonthPicker ? copy.hideMonths : copy.otherMonths}</button><button type="button" className="quiet-action" onClick={saveCurrentArchive} disabled={saveArchive.isPending}>{isAuthenticated ? <Save /> : <LogIn />}{isAuthenticated ? copy.save : copy.login}</button>{isAuthenticated && <button type="button" className="quiet-action" onClick={exportCurrentThemeReport} disabled={!activeArchiveId}><FileDown /> {selectedLocale === "en" ? "Export full theme report" : "导出完整主题报告"}</button>}<button type="button" className="quiet-action" onClick={shareManual}><Share2 /> {selectedLocale === "en" ? "Share Guanli" : "分享观历"}</button><Link className="quiet-action focus-consult-link" href="/consultation?service=deep_reading"><HeartHandshake /> {selectedLocale === "en" ? "Learn about human deep reading" : "了解人工深度解读"}</Link></div></details>
+              {isAuthenticated && <section className="fate-review-request"><BadgeCheck /><div><span>{fateReviewStatus.kicker}</span><b>{fateReviewStatus.label}</b><p>{fateReviewStatus.description}</p></div>{fateReviewStatus.canRequest && <button type="button" onClick={requestCurrentFateReview} disabled={!activeArchiveId || requestFateReview.isPending}>{requestFateReview.isPending ? "正在提交…" : "提交复核"}</button>}</section>}
               <details className="reading-details"><summary><ChevronDown /> {copy.basis}</summary><div><p><b>节气：</b>{annualAccess?.timezone || "北京时间"}；下一节“{annualAccess?.nextJie || "校验中"}”；可读 {annualAccess?.openMonths.length || 0} 卷。</p><p><b>排盘：</b>日柱 {dayPillar}；时间 {result.correctedTime}。{profile.birthPlace ? `地点：${profile.birthPlace}。` : ""}</p></div></details>
               <details className="reading-details"><summary><ChevronDown /> {copy.method}</summary><div><p><b>{copy.source}：</b>{annualMethod.data?.calendarLibrary || "lunar-javascript"}；版本 {annualMethod.data?.version || "校验中"}。</p><p>{annualMethod.data?.annualWindow}</p><p>{annualMethod.data?.contentGeneration}</p><p>{annualMethod.data?.limitation}</p></div></details>
               <details className="archive-details" open={showArchive} onToggle={(event) => setShowArchive((event.currentTarget as HTMLDetailsElement).open)}><summary><ChevronDown /> 我的私有档案</summary><div className="archive-details-body"><p>{isAuthenticated ? "只有你能看到。" : "登录后才会保存。"}</p>{isAuthenticated && (archivesQuery.isLoading ? <p>正在读取…</p> : archivesQuery.data?.length ? <ul>{archivesQuery.data.map((record) => <li key={record.id}><div><b>{record.label}</b><small>{record.targetYear} 年 · {new Date(record.createdAt).toLocaleDateString("zh-CN")}</small></div><span><button type="button" onClick={() => restoreArchive(record)}>打开</button><button type="button" aria-label={`永久删除 ${record.label}`} onClick={() => removeArchive.mutate({ id: record.id })} disabled={removeArchive.isPending}><Trash2 /></button></span></li>)}</ul> : <p>还没有保存的命书。</p>)}</div></details>

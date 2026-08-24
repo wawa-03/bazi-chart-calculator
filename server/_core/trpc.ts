@@ -43,3 +43,14 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+/** Administrators and explicitly assigned astrologers may review submitted charts. */
+export const astrologerProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    if (!ctx.user || !["admin", "astrologer"].includes(ctx.user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+    }
+    return next({ ctx: { ...ctx, user: ctx.user } });
+  }),
+);

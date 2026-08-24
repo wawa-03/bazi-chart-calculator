@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveFateAnalysis, deriveMonthReading } from "./fateAnalysis";
+import { deriveFateAnalysis, deriveMonthReading, deriveThreeYearComparison } from "./fateAnalysis";
 import { calculateBazi, type BaziInput, type BaziResult } from "./bazi";
 
 const input: BaziInput = {
@@ -76,5 +76,17 @@ describe("deriveFateAnalysis", () => {
     expect(second.prompt).toContain("命局落点");
     expect(second.note).not.toBe(first.note);
     expect(second.focus).not.toContain("先定下来");
+  });
+
+  it("以命局、喜用与大运并看当前流年和未来两年", () => {
+    const comparison = deriveThreeYearComparison(result, input, "zh-CN", 2026);
+
+    expect(comparison).toHaveLength(3);
+    expect(comparison.map((item) => item.year)).toEqual([2026, 2027, 2028]);
+    expect(comparison[0]).toMatchObject({ ganzhi: "丙午", tenGod: "食神", daYun: "己未" });
+    expect(comparison[0]?.focus).toContain("丙午流年");
+    expect(comparison[0]?.evidence).toContain("月令酉");
+    expect(comparison[0]?.evidence).toContain("己未大运");
+    expect(comparison.every((item) => ["supports", "needs-weighing", "contextual"].includes(item.alignment))).toBe(true);
   });
 });

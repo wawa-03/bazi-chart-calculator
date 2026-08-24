@@ -23,12 +23,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { AnnualManual } from "@/components/AnnualManual";
 import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi, formatCoordinate } from "@/lib/bazi";
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
 import { sharePublicPage } from "@/lib/publicShare";
-import { deriveFateAnalysis } from "@/lib/fateAnalysis";
+import { deriveFateAnalysis, deriveThreeYearComparison } from "@/lib/fateAnalysis";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { siteCopy } from "@/lib/siteCopy";
 import { SiteFooter, SiteHeader } from "@/components/SiteShell";
@@ -87,16 +88,26 @@ function PillarCard({ pillar, index, labels }: { pillar: BaziResult["pillars"][n
 
 function FateOverview({ result, input, locale, targetYear }: { result: BaziResult; input: BaziInput; locale: "zh-CN" | "zh-TW" | "en"; targetYear: number }) {
   const fate = useMemo(() => deriveFateAnalysis(result, input, locale, targetYear), [input, locale, result, targetYear]);
+  const yearComparison = useMemo(() => deriveThreeYearComparison(result, input, locale, targetYear), [input, locale, result, targetYear]);
+  const publishedRules = trpc.fateRules.published.useQuery();
   const domains = [["relationship", fate.relationship], ["career", fate.career], ["finance", fate.finance], ["rhythm", fate.rhythm]] as const;
   const label = (zh: string, tw: string, en: string) => locale === "en" ? en : locale === "zh-TW" ? tw : zh;
+  const alignmentLabel = (alignment: (typeof yearComparison)[number]["alignment"]) => {
+    if (alignment === "supports") return label("较顺于喜用", "較順於喜用", "Leans with useful elements");
+    if (alignment === "needs-weighing") return label("需重点衡量", "需重點衡量", "Needs closer weighing");
+    return label("需连同全局看", "需連同全局看", "Read with the full chart");
+  };
 
   return <section className="fate-result-overview" aria-labelledby="fate-overview-title">
     <header><span>{label("命局 / 行运", "命局 / 行運", "NATAL CHART / LUCK CYCLE")}</span><h3 id="fate-overview-title">{label("先看命局，再看行运", "先看命局，再看行運", "Read the natal chart, then the luck cycle")}</h3><p>{label("以下按月令、日主、喜忌、十神与合冲，再落到大运。", "以下按月令、日主、喜忌、十神與合沖，再落到大運。", "This reading follows month command, Day Master, useful elements, Ten Gods, combinations, clashes, then Da Yun.")}</p></header>
+    <aside className="fate-rule-status"><Info /><div><span>{label("规则推演", "規則推演", "RULE-BASED READING")}</span><b>{label("当前内容尚未人工复核", "目前內容尚未人工複核", "This reading has not been human-reviewed")}</b><p>{label("格局、从格与特殊合化会按现有规则参与判读；保存命书后，可由你主动提交授权命理师复核。", "格局、從格與特殊合化會按現有規則參與判讀；儲存命書後，可由你主動提交授權命理師複核。", "Structure, following patterns, and special transformations are read by the current rules. After saving, you may choose to submit the chart to an authorized reviewer.")}</p></div></aside>
     <div className="fate-core-grid">
       <article className="fate-core-card"><span>{label("日主与旺衰", "日主與旺衰", "DAY MASTER / STRENGTH")}</span><b>{fate.dayMaster}{fate.dayMasterElement} · {fate.strength.label}</b><p>{fate.strength.text}</p><small>{fate.strength.evidence.join("；")}</small></article>
       <article className="fate-core-card"><span>{label("月令与命局主轴", "月令與命局主軸", "MONTH COMMAND / AXIS")}</span><b>{fate.monthCommand.branch}月 · {fate.monthCommand.tenGod}</b><p>{fate.structure.text}</p>{fate.structure.interactions.length > 0 && <small>{fate.structure.interactions.join("；")}</small>}</article>
     </div>
     <div className="fortune-decade-card fate-luck-card"><div><span>{label("当前大运", "目前大運", "CURRENT DA YUN")}</span><b>{fate.currentLuck.ganzhi}</b><small>{fate.currentLuck.tenGod}</small></div><div><span>{label("当前流年", "目前流年", "FLOWING YEAR")}</span><b>{fate.currentLuck.flowYear}</b><small>{fate.currentLuck.flowYearTenGod}</small></div><div><span>{label("喜用取向", "喜用取向", "WORKING PREFERENCE")}</span><b>{fate.useGod.favored.join("、")}</b><small>{label(`偏忌：${fate.useGod.avoid.join("、")}`, `偏忌：${fate.useGod.avoid.join("、")}`, `Secondary / avoid: ${fate.useGod.avoid.join(" / ")}`)}</small></div><p>{fate.useGod.text} {fate.currentLuck.text} {fate.currentLuck.flowYearText}</p></div>
+    <section className="fate-year-comparison" aria-labelledby="three-year-title"><header><span>{label("三年流年对照", "三年流年對照", "THREE-YEAR COMPARISON")}</span><h4 id="three-year-title">{label("当前流年，与未来两年", "目前流年，與未來兩年", "This year and the next two")}</h4><p>{label("逐年同看命局、喜用与当步大运，不把单一年份当作结论。", "逐年同看命局、喜用與當步大運，不把單一年份當作結論。", "Each year is read with the natal chart, useful elements, and active Da Yun—not as a standalone verdict.")}</p></header><div className="fate-year-grid">{yearComparison.map((year) => <article key={year.year} className={`fate-year-card is-${year.alignment}`}><span>{year.year}</span><b>{year.ganzhi}</b><small>{year.tenGod} · {year.daYun}{label("大运", "大運", " Da Yun")}</small><em>{alignmentLabel(year.alignment)}</em><p>{year.focus}</p><details><summary><ChevronDown /> {label("看这一年的依据", "看這一年的依據", "See derivation")}</summary><p>{year.evidence}</p>{year.interactions.length > 0 && <small>{year.interactions.join("；")}</small>}</details></article>)}</div><p className="fate-year-boundary">{label("三年对照用于比较命理侧重，不保证事件，也不作为医疗、法律、投资或重大人生决策依据。", "三年對照用於比較命理側重，不保證事件，也不作醫療、法律、投資或重大人生決策依據。", "This comparison is for reading yearly emphasis; it does not guarantee events or provide medical, legal, investment, or major life-decision advice.")}</p></section>
+    {publishedRules.data?.length ? <details className="fate-published-rules"><summary><ChevronDown /> {label("命理师校订的判读规则", "命理師校訂的判讀規則", "Reviewer-published reading notes")}</summary><div>{publishedRules.data.map((rule) => <article key={rule.id}><span>{rule.ruleKey} · v{rule.version}</span><b>{rule.title}</b><p>{rule.body}</p></article>)}</div></details> : null}
     <div className="fortune-direction-grid fate-domain-grid">{domains.map(([key, domain]) => <details key={key} className={`fortune-direction-card is-${key}`}><summary><span>{domain.label}</span><b>{domain.title}</b><small>{domain.focus}</small><ChevronDown /></summary><div><p><b>{label("命局：", "命局：", "Natal: ")}</b>{domain.judgment}</p><p><b>{label("行运：", "行運：", "Luck cycle: ")}</b>{domain.fortune}</p><small>{domain.evidence} {domain.boundary}</small></div></details>)}</div>
     <a className="result-annual-cta" href="#manual"><BookOpenText /><span><small>{label("下一步", "下一步", "NEXT")}</small><b>{label("按月份看今年或明年的命书", "按月份看今年或明年的命書", "Read this year or next year by month")}</b><em>{label("月卷会把流月与命局、大运再放在一起看。", "月卷會把流月與命局、大運再放在一起看。", "Each monthly volume reads the flowing month with the natal chart and Da Yun.")}</em></span><ChevronRight /></a>
   </section>;

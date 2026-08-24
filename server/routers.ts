@@ -2,11 +2,11 @@ import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { createConsultationRequest, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, listAllConsultationRequests, listAllThemeNotes, listConsultationRequests, listSavedArchives, listThemeNotes, saveThemeNote, setUserLanguagePreference, updateConsultationRequestStatus } from "./db";
+import { createConsultationRequest, createFateRuleDraft, createSavedArchive, deleteConsultationRequest, deleteSavedArchive, deleteThemeNote, getFateReviewForOwner, listAllConsultationRequests, listAllThemeNotes, listConsultationRequests, listFateReviewRevisions, listFateRuleVersions, listPublishedFateRules, listSavedArchives, listSubmittedFateReviews, listThemeNotes, publishFateRuleVersion, requestFateReview, saveThemeNote, setUserLanguagePreference, updateConsultationRequestStatus, updateFateReview } from "./db";
 import { annualMethod } from "./annualMethod";
 import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, astrologerProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { makeRequest } from "./_core/map";
 
@@ -23,6 +23,16 @@ const archivePayloadSchema = z.object({
     residence: z.string().trim().max(140),
     year: z.number().int().min(1900).max(2200),
   }),
+});
+
+const fateReviewUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  reviewStatus: z.enum(["pending", "in_review", "published"]),
+  structureVerdict: z.string().trim().max(160).optional(),
+  congGeVerdict: z.enum(["undetermined", "none", "cong_strong", "cong_weak", "other"]),
+  specialCombinationVerdict: z.string().trim().max(2400).optional(),
+  rationale: z.string().trim().max(4000).optional(),
+  displayCopy: z.string().trim().max(2400).optional(),
 });
 
 export const appRouter = router({
@@ -61,6 +71,31 @@ export const appRouter = router({
       archiveId: z.number().int().positive(),
       themeKey: z.enum(["relationship", "career", "finance", "rhythm"]),
     })).mutation(({ ctx, input }) => deleteThemeNote(ctx.user.id, input.archiveId, input.themeKey)),
+  }),
+  fateReviews: router({
+    mine: protectedProcedure.input(z.object({ archiveId: z.number().int().positive() })).query(({ ctx, input }) =>
+      getFateReviewForOwner(ctx.user.id, input.archiveId),
+    ),
+    request: protectedProcedure.input(z.object({ archiveId: z.number().int().positive() })).mutation(({ ctx, input }) =>
+      requestFateReview(ctx.user.id, input.archiveId),
+    ),
+    reviewerList: astrologerProcedure.query(() => listSubmittedFateReviews()),
+    reviewerSave: astrologerProcedure.input(fateReviewUpdateSchema).mutation(({ ctx, input }) => updateFateReview(ctx.user.id, input)),
+    reviewerHistory: astrologerProcedure.input(z.object({ reviewId: z.number().int().positive() })).query(({ input }) =>
+      listFateReviewRevisions(input.reviewId),
+    ),
+  }),
+  fateRules: router({
+    published: publicProcedure.query(() => listPublishedFateRules()),
+    reviewerList: astrologerProcedure.query(() => listFateRuleVersions()),
+    reviewerCreateDraft: astrologerProcedure.input(z.object({
+      ruleKey: z.string().trim().min(3).max(64).regex(/^[a-z0-9_-]+$/),
+      title: z.string().trim().min(2).max(120),
+      body: z.string().trim().min(10).max(4000),
+    })).mutation(({ ctx, input }) => createFateRuleDraft(ctx.user.id, input)),
+    reviewerPublish: astrologerProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) =>
+      publishFateRuleVersion(ctx.user.id, input.id),
+    ),
   }),
   consultations: router({
     list: protectedProcedure.query(({ ctx }) => listConsultationRequests(ctx.user.id)),
