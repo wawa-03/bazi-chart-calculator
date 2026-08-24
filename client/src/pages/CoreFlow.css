@@ -180,6 +180,7 @@
 .fate-core-card > b { color: #2c403a; font: 800 21px/1.15 var(--serif); }
 .fate-core-card > p { margin: 0; color: #53645d; font: 11px/1.65 var(--sans); }
 .fate-core-card > small { color: #75817a; font: 9px/1.55 var(--sans); }
+.plain-reading { display: grid; gap: 7px; align-content: start; }.plain-reading > span { color: #577265; font: 600 9px var(--mono); letter-spacing: .08em; }.plain-reading > p { margin: 0; color: #43574e; font: 11px/1.7 var(--sans); }.plain-reading > small { color: #77847d; font: 9px/1.55 var(--sans); }.reading-mode-toggle { display: inline-flex; align-items: center; gap: 4px; width: fit-content; min-height: 25px; margin-top: auto; padding: 4px 6px; border: 1px solid #aebeb2; background: transparent; color: #49685a; font: 700 9px var(--sans); cursor: pointer; transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out), transform 160ms var(--ease-out); }.reading-mode-toggle:hover { border-color: #5d7c6c; background: rgba(231, 239, 231, .62); }.reading-mode-toggle:active { transform: scale(.97); }.reading-mode-toggle svg { width: 11px; }
 .fate-luck-card { margin-top: 0; }
 .fortune-decade-card.fate-luck-card { grid-template-columns: repeat(3, 1fr); }
 .fate-luck-card > p { grid-column: 1 / -1; }
@@ -190,6 +191,7 @@
 .fortune-decade-card b { color: #2c403a; font: 800 28px/1 var(--serif); }
 .fortune-decade-card small { color: #738079; font: 10px/1.45 var(--sans); }
 .fortune-decade-card > p { grid-column: 1 / -1; margin: 0; padding: 12px 15px; background: rgba(44, 70, 80, .045); color: #55665f; font: 11px/1.65 var(--sans); }
+.fortune-decade-card > .plain-reading { grid-column: 1 / -1; min-height: 113px; padding: 15px; background: rgba(250, 248, 241, .96); }.fortune-decade-card > .reading-mode-toggle { grid-column: 1 / -1; justify-self: start; margin: 0 15px 13px; }
 
 .fate-year-comparison { display: grid; gap: 11px; padding: 16px; border: 1px solid #d3cabd; background: rgba(249, 247, 240, .7); }
 .fate-year-comparison > header > span { color: var(--indigo); font: 500 9px var(--mono); letter-spacing: .1em; }
@@ -200,6 +202,7 @@
 .fate-year-card > span { color: #718078; font: 500 10px var(--mono); }.fate-year-card > b { color: #30423d; font: 800 27px/1 var(--serif); }.fate-year-card > small { color: #6d7972; font: 9px/1.45 var(--sans); }
 .fate-year-card > em { width: fit-content; padding: 3px 6px; color: #56645e; background: #edf0e8; font: 600 9px/1.2 var(--sans); font-style: normal; }.fate-year-card.is-needs-weighing > em { color: #91452f; background: #fbebe2; }.fate-year-card.is-supports > em { color: #456a5c; background: #e7efe7; }
 .fate-year-card > p { margin: 1px 0 0; color: #53625b; font: 10px/1.55 var(--sans); }.fate-year-card details { margin-top: auto; }.fate-year-card summary { color: var(--cinnabar-dark); font: 600 9px var(--sans); cursor: pointer; list-style: none; }.fate-year-card summary::-webkit-details-marker { display: none; }.fate-year-card summary svg { width: 12px; vertical-align: -2px; }.fate-year-card details > p, .fate-year-card details > small { display: block; margin: 8px 0 0; color: #6c7871; font: 9px/1.55 var(--sans); }
+.fate-year-card .reading-mode-toggle { margin-top: auto; }
 .fate-published-rules { border-top: 1px solid #d7cec1; padding-top: 11px; }.fate-published-rules > summary { color: #52665e; font: 700 10px var(--sans); cursor: pointer; list-style: none; }.fate-published-rules > summary::-webkit-details-marker { display: none; }.fate-published-rules > summary svg { width: 13px; vertical-align: -2px; color: var(--indigo); }.fate-published-rules > div { display: grid; gap: 8px; margin-top: 10px; }.fate-published-rules article { display: grid; gap: 4px; padding: 10px; border-left: 2px solid #5b7568; background: rgba(231, 239, 231, .44); }.fate-published-rules article span { color: #61766c; font: 9px var(--mono); }.fate-published-rules article b { color: #365045; font: 800 14px var(--serif); }.fate-published-rules article p { margin: 0; color: #5d6e66; font: 10px/1.6 var(--sans); white-space: pre-wrap; }
 
 .fortune-direction-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; border: 1px solid #d8cfc2; background: #d8cfc2; }
@@ -212,6 +215,7 @@
 .fortune-direction-card[open] summary > svg { transform: rotate(180deg); }
 .fortune-direction-card > div { padding: 0 14px 14px; border-top: 1px solid #e2d9cc; color: #52625b; font: 11px/1.65 var(--sans); }
 .fortune-direction-card > div p { margin: 10px 0 0; }.fortune-direction-card > div small { display: block; margin-top: 11px; color: #7b837d; font: 9px/1.55 var(--sans); }
+.fortune-direction-card > div .plain-reading { margin-top: 11px; }.fortune-direction-card > div .reading-mode-toggle { margin-top: 12px; }
 .fortune-direction-card.is-finance summary { border-top: 2px solid var(--cinnabar); }.fortune-direction-card.is-finance summary > span { color: var(--cinnabar-dark); }
 
 .result-annual-cta { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; min-height: 76px; padding: 15px 16px; border: 1px solid var(--cinnabar); background: var(--cinnabar); color: #fffaf4; text-decoration: none; transition: background 160ms var(--ease-out), transform 160ms var(--ease-out); }
