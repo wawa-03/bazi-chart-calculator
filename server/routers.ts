@@ -8,6 +8,7 @@ import { getAnnualWindow } from "./annualWindow";
 import { resolveRequestLocale, supportedLocales } from "./locale";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
+import { makeRequest } from "./_core/map";
 
 const archivePayloadSchema = z.object({
   input: z.object({
@@ -91,6 +92,35 @@ export const appRouter = router({
       getAnnualWindow(input.targetYear),
     ),
     method: publicProcedure.query(() => annualMethod),
+  }),
+  places: router({
+    autocomplete: publicProcedure.input(z.object({ query: z.string().trim().min(2).max(100) })).query(async ({ input }) => {
+      const response = await makeRequest<{ predictions?: Array<{ place_id: string; structured_formatting?: { main_text?: string; secondary_text?: string }; description: string }> }>(
+        "/maps/api/place/autocomplete/json",
+        { input: input.query, types: "(cities)" },
+      );
+      return (response.predictions || []).slice(0, 5).map((prediction) => ({
+        placeId: prediction.place_id,
+        primaryText: prediction.structured_formatting?.main_text || prediction.description,
+        secondaryText: prediction.structured_formatting?.secondary_text || "Location",
+      }));
+    }),
+    details: publicProcedure.input(z.object({ placeId: z.string().trim().min(1).max(300), fallbackName: z.string().trim().min(1).max(160), fallbackAddress: z.string().trim().max(300) })).mutation(async ({ input }) => {
+      const response = await makeRequest<{ result?: { name?: string; formatted_address?: string; address_components?: Array<{ long_name: string; types: string[] }>; geometry?: { location?: { lat: number; lng: number } } } }>(
+        "/maps/api/place/details/json",
+        { place_id: input.placeId, fields: "name,formatted_address,address_component,geometry" },
+      );
+      const result = response.result;
+      const point = result?.geometry?.location;
+      if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return null;
+      return {
+        name: result.name || input.fallbackName,
+        address: result.formatted_address || input.fallbackAddress,
+        country: result.address_components?.find((component) => component.types.includes("country"))?.long_name || input.fallbackAddress,
+        latitude: point.lat,
+        longitude: point.lng,
+      };
+    }),
   }),
   locale: router({
     current: publicProcedure.query(({ ctx }) => resolveRequestLocale(ctx.req.headers, ctx.user?.languagePreference)),

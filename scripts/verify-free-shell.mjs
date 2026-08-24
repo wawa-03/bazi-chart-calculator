@@ -41,6 +41,7 @@ try {
   assert.equal(await desktop.locator(".result-page").isVisible(), false);
   assert.equal(await desktop.locator("#manual").isVisible(), false);
   assert.equal(await desktop.locator(".input-sheet").isVisible(), true);
+  assert.match(await desktop.locator("#birth-city").getAttribute("placeholder"), /London/);
   await desktop.locator(".calculate-button").click();
   await desktop.locator(".chart-loading").waitFor({ state: "visible", timeout: 1000 });
   assert.match(await desktop.locator(".chart-loading").innerText(), /正在排盘|Making your chart/);

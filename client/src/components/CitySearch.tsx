@@ -1,16 +1,17 @@
 /**
  * 观象历书设计提醒：城市搜索是输入侧注的一部分，紧凑、可核对，并把坐标作为历法条件而非装饰信息。
  */
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { LoaderCircle, MapPinned, Search, X } from "lucide-react";
-import { MapView } from "@/components/Map";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { formatCoordinate } from "@/lib/bazi";
 import { siteCopy } from "@/lib/siteCopy";
+import { trpc } from "@/lib/trpc";
 
 export type CityLocation = {
   name: string;
   address: string;
+  country: string;
   latitude: number;
   longitude: number;
 };
@@ -27,16 +28,28 @@ type Suggestion = {
 
 type PlaceDetails = {
   name?: string | null;
+  displayName?: string | { text?: string } | null;
   formatted_address?: string | null;
+  formattedAddress?: string | null;
+  address_components?: Array<{ long_name?: string; longText?: string; types?: string[] }> | null;
+  addressComponents?: Array<{ long_name?: string; longText?: string; types?: string[] }> | null;
+  location?: { lat: () => number; lng: () => number } | null;
   geometry?: { location?: { lat: () => number; lng: () => number } | null } | null;
 };
 
+function textValue(value?: string | { text?: string } | null) {
+  return typeof value === "string" ? value : value?.text || "";
+}
+
 export function cityLocationFromPlace(suggestion: Suggestion, place?: PlaceDetails | null): CityLocation | null {
-  const point = place?.geometry?.location;
+  const point = place?.location || place?.geometry?.location;
   if (!point) return null;
+  const countryComponent = [...(place?.addressComponents || []), ...(place?.address_components || [])].find((component) => component.types?.includes("country"));
+  const country = countryComponent?.longText || countryComponent?.long_name || suggestion.secondaryText;
   return {
-    name: place.name || suggestion.primaryText,
-    address: place.formatted_address || suggestion.secondaryText,
+    name: textValue(place?.displayName) || place?.name || suggestion.primaryText,
+    address: place?.formattedAddress || place?.formatted_address || suggestion.secondaryText,
+    country,
     latitude: point.lat(),
     longitude: point.lng(),
   };
@@ -45,84 +58,38 @@ export function cityLocationFromPlace(suggestion: Suggestion, place?: PlaceDetai
 export function CitySearch({ onSelect }: CitySearchProps) {
   const { locale } = useAppLocale();
   const copy = siteCopy[locale].city;
-  const autocomplete = useRef<google.maps.places.AutocompleteService | null>(null);
-  const detailService = useRef<google.maps.places.PlacesService | null>(null);
-  const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selected, setSelected] = useState<CityLocation | null>(null);
-
-  function onMapReady(map: google.maps.Map) {
-    autocomplete.current = new google.maps.places.AutocompleteService();
-    detailService.current = new google.maps.places.PlacesService(map);
-    setReady(true);
-  }
-
-  useEffect(() => {
-    const keyword = query.trim();
-    if (!ready || keyword.length < 2 || !autocomplete.current || selected?.name === keyword) {
-      setSuggestions([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    const timer = window.setTimeout(() => {
-      autocomplete.current?.getPlacePredictions(
-        {
-          input: keyword,
-          componentRestrictions: { country: "cn" },
-          types: ["(cities)"],
-        },
-        (predictions, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-            setSuggestions(predictions.slice(0, 5).map((prediction) => ({
-              placeId: prediction.place_id,
-              primaryText: prediction.structured_formatting?.main_text || prediction.description,
-              secondaryText: prediction.structured_formatting?.secondary_text || "中国",
-            })));
-          } else {
-            setSuggestions([]);
-          }
-          setIsSearching(false);
-        },
-      );
-    }, 260);
-
-    return () => window.clearTimeout(timer);
-  }, [query, ready, selected]);
+  const keyword = query.trim();
+  const suggestionsQuery = trpc.places.autocomplete.useQuery({ query: keyword || "__" }, { enabled: keyword.length >= 2 && selected?.name !== keyword, retry: false, staleTime: 30_000 });
+  const suggestions = selected?.name === keyword ? [] : (suggestionsQuery.data || []) as Suggestion[];
+  const isSearching = suggestionsQuery.isFetching;
+  const detailsQuery = trpc.places.details.useMutation();
 
   function chooseSuggestion(suggestion: Suggestion) {
-    if (!detailService.current) return;
     setIsSelecting(true);
-    detailService.current.getDetails(
-      { placeId: suggestion.placeId, fields: ["name", "formatted_address", "geometry"] },
-      (place, status) => {
-        const location = cityLocationFromPlace(suggestion, place);
-        if (status === google.maps.places.PlacesServiceStatus.OK && location) {
-          setSelected(location);
-          setQuery(location.name);
-          setSuggestions([]);
-          onSelect(location);
-        }
-        setIsSelecting(false);
+    detailsQuery.mutate({ placeId: suggestion.placeId, fallbackName: suggestion.primaryText, fallbackAddress: suggestion.secondaryText }, {
+      onSuccess: (location) => {
+        if (!location) return;
+        setSelected(location);
+        setQuery(location.name);
+        onSelect(location);
       },
-    );
+      onSettled: () => setIsSelecting(false),
+    });
   }
 
   function clearSelection() {
     setSelected(null);
     setQuery("");
-    setSuggestions([]);
   }
 
   return (
     <div className="city-search">
       <div className="field-head city-field-head">
         <label className="field-label" htmlFor="birth-city">{copy.label}</label>
-        <span>{ready ? copy.ready : copy.connecting}</span>
+        <span>{copy.ready}</span>
       </div>
       <div className="city-search-box">
         <Search aria-hidden="true" />
@@ -159,8 +126,7 @@ export function CitySearch({ onSelect }: CitySearchProps) {
           ))}
         </div>
       )}
-      {selected && <p className="city-selected"><MapPinned /> {copy.selected} {selected.name} · {formatCoordinate(selected.latitude)}°, {formatCoordinate(selected.longitude)}°</p>}
-      <MapView className="city-search-map-loader" initialCenter={{ lat: 35.8617, lng: 104.1954 }} initialZoom={4} onMapReady={onMapReady} />
+      {selected && <p className="city-selected"><MapPinned /> {copy.selected} {selected.name} · {selected.country} · {formatCoordinate(selected.latitude)}°, {formatCoordinate(selected.longitude)}°</p>}
     </div>
   );
 }
