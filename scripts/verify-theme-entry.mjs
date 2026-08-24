@@ -14,7 +14,10 @@ try {
   await page.locator(".manual-create-button").click({ timeout: 10000 });
   await page.waitForSelector(".theme-pause-card", { timeout: 10000 });
 
+  assert.equal(await page.locator(".month-first-picker").isVisible(), true);
+  assert.ok(await page.locator(".month-first-picker .future-month-picker button.is-active").count() === 1);
   assert.match(await page.locator(".focus-reading-card").innerText(), /只作参考/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /看\s*\n|看\s/);
   const contrast = page.locator(".fortune-contrast-details");
   const moreOptions = page.locator(".focus-actions-details");
   assert.equal(await contrast.evaluate((element) => element.open), false);

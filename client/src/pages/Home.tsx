@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Share2,
   Sparkles,
+  WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -27,6 +28,8 @@ import { CityLocation, CitySearch } from "@/components/CitySearch";
 import { BaziInput, BaziResult, calculateBazi, formatCoordinate } from "@/lib/bazi";
 import { copyBaziPlainText, downloadBaziPng } from "@/lib/baziExport";
 import { sharePublicPage } from "@/lib/publicShare";
+import { deriveFortuneContrast } from "@/lib/fortuneContrast";
+import { deriveLifeThemes } from "@/lib/lifeThemes";
 import { useAppLocale } from "@/contexts/AppLocaleContext";
 import { siteCopy } from "@/lib/siteCopy";
 import { SiteFooter, SiteHeader } from "@/components/SiteShell";
@@ -97,7 +100,11 @@ export default function Home() {
   const [isSharing, setIsSharing] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
   const [hasCalculated, setHasCalculated] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const correctionPreview = useMemo(() => (Number(longitudeText) - 120) * 4, [longitudeText]);
+  const resultYear = useMemo(() => new Date().getFullYear(), []);
+  const resultContrast = useMemo(() => deriveFortuneContrast(result, resultYear, locale), [locale, result, resultYear]);
+  const financeCue = useMemo(() => deriveLifeThemes(result, locale).find((theme) => theme.key === "finance"), [locale, result]);
 
   function parseDraftInput(): BaziInput {
     const longitude = Number(longitudeText.trim());
@@ -111,11 +118,15 @@ export default function Home() {
     try {
       const nextInput = parseDraftInput();
       const nextResult = calculateBazi(nextInput);
-      setInput(nextInput);
-      setResult(nextResult);
-      setHasCalculated(true);
+      setIsCalculating(true);
       setFormError("");
-      window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+      window.setTimeout(() => {
+        setInput(nextInput);
+        setResult(nextResult);
+        setHasCalculated(true);
+        setIsCalculating(false);
+        window.setTimeout(() => document.getElementById("result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 20);
+      }, 240);
     } catch (calculationError) {
       setFormError(calculationError instanceof Error ? calculationError.message : copy.form.error);
     }
@@ -195,6 +206,8 @@ export default function Home() {
     <div className={`app-shell${hasCalculated ? " has-calculated" : " is-awaiting-chart"}`}>
       <SiteHeader />
 
+      {isCalculating && <div className="chart-loading" role="status" aria-live="polite"><div><LoaderCircle /><b>{locale === "en" ? "Making your chart" : locale === "zh-TW" ? "正在排盤" : "正在排盘"}</b><span>{locale === "en" ? "Checking time and solar terms" : locale === "zh-TW" ? "正在核對時間和節氣" : "正在核对时间和节气"}</span></div></div>}
+
       <main id="top">
         <section className="workspace" aria-label="Bazi calculator">
           <aside className="input-sheet" id="calculator">
@@ -217,7 +230,8 @@ export default function Home() {
             <header className="result-header"><div><div className="sheet-kicker"><span>02</span> {copy.result.kicker}</div><h2 id="result-title">{copy.result.title} <small>{copy.result.subtitle}</small></h2></div><div className="correction-seal"><span>{copy.result.correction}</span><b>{formatCorrection(result.correctionMinutes, locale)}</b><small>{copy.result.correctedSolarTime}</small></div></header>
             <div className="pillars-grid">{result.pillars.map((pillar, index) => <PillarCard key={pillar.key} pillar={pillar} index={index} labels={copy.result} />)}</div>
             <div className="result-caption"><span className="seal-stamp">{locale === "en" ? "CHECKED" : "已校"}</span><p><b>{copy.result.rule}</b></p></div>
-            <details className="result-details"><summary><ChevronDown /> {locale === "en" ? "See chart details" : locale === "zh-TW" ? "查看排盤細節" : "查看排盘细节"}</summary><div><div className="time-ledger"><div><span>{copy.result.originalTime}</span><b>{result.originalTime}</b></div><ArrowUpRight /><div><span>{copy.result.chartTime}</span><b>{result.correctedTime}</b></div><em className="coordinate-display">{coordinateLabel}</em></div><section className="export-panel" aria-label={copy.result.exportKicker}><div className="export-panel-copy"><span>{copy.result.exportKicker}</span><p>{copy.result.exportBody}</p><small>{locale === "en" ? "Sharing only sends the public Guanli link—never your chart, birth details, or saved notes." : locale === "zh-TW" ? "分享只會傳送公開觀曆連結，不包含排盤、出生資料或私人筆記。" : "分享只会发送公开观历链接，不包含排盘、出生资料或私有笔记。"}</small></div><div className="export-actions"><Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>{isExporting ? <LoaderCircle className="export-spin" /> : <Download />}{isExporting ? copy.result.generating : copy.result.download}</Button><button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>{isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("copied") || exportStatus.includes("已复制") || exportStatus.includes("已複製") ? <Check /> : <Copy />}{isCopying ? copy.result.copying : copy.result.copy}</button><button className="copy-text-button share-public-button" type="button" onClick={handlePublicShare} disabled={isSharing}><Share2 />{isSharing ? "…" : locale === "en" ? "Share Guanli" : locale === "zh-TW" ? "分享觀曆" : "分享观历"}</button></div><p className="export-status" aria-live="polite">{exportStatus}</p></section><div className="detail-grid"><article className="detail-card solar-card"><div className="detail-top"><span>{copy.result.jieQi}</span><BookOpenText /></div><strong>{result.currentJieQi}</strong><p>{copy.result.previous}：{result.previousJie}<i /> {copy.result.next}：{result.nextJie}</p></article><article className="detail-card"><div className="detail-top"><span>{copy.result.additional}</span><span className="small-mark">A</span></div><dl><div><dt>{copy.result.fetalOrigin}</dt><dd>{result.taiYuan}</dd></div><div><dt>{copy.result.lifePalace}</dt><dd>{result.mingGong}</dd></div><div><dt>{copy.result.bodyPalace}</dt><dd>{result.shenGong}</dd></div></dl></article><article className="detail-card direction-card"><div className="detail-top"><span>{copy.result.direction}</span><span className="small-mark">B</span></div><strong>{result.direction}</strong><p>{copy.result.start}：{result.startYunText}<br />{copy.result.start}：{result.startYunDate}</p></article></div>{result.daYun.length > 0 && <section className="fortune-section" aria-labelledby="fortune-title"><div className="fortune-heading"><h3 id="fortune-title">{copy.result.fortuneDirection}</h3><span>{copy.result.fortuneHint}</span></div><div className="fortune-strip">{result.daYun.map((item) => <div key={`${item.ganzhi}-${item.startYear}`}><b>{item.ganzhi}</b><span>{item.startAge}–{item.endAge} {copy.result.year}</span><small>{item.startYear} {copy.result.start}</small></div>)}</div></section>}</div></details>
+            <section className="result-reading-bridge" aria-label={locale === "en" ? "Current context" : locale === "zh-TW" ? "現在重點" : "现在重点"}><article><span>{locale === "en" ? "CURRENT DA YUN" : locale === "zh-TW" ? "目前大運" : "当前大运"}</span><b>{resultContrast.activeDaYun?.ganzhi || "—"}</b><small>{resultContrast.activeDaYun ? `${resultContrast.activeDaYun.startYear}–${Number(resultContrast.activeDaYun.startYear) + 9}` : resultContrast.focus}</small></article><article><span>{locale === "en" ? "MONEY CUE" : locale === "zh-TW" ? "財務線索" : "财务线索"}</span><b><WalletCards /> {financeCue?.title || (locale === "en" ? "Money" : "财务")}</b><small>{financeCue?.focus || (locale === "en" ? "Check your pace." : "先看节奏。")}</small></article><a href="#manual"><BookOpenText /> {locale === "en" ? "Read your monthly annual manual" : locale === "zh-TW" ? "按月份看年度命書" : "按月份看年度命书"}<ChevronRight /></a></section>
+            <details className="result-details"><summary><ChevronDown /> {locale === "en" ? "See chart details and export" : locale === "zh-TW" ? "查看排盤細節與匯出" : "查看排盘细节与导出"}</summary><div><div className="time-ledger"><div><span>{copy.result.originalTime}</span><b>{result.originalTime}</b></div><ArrowUpRight /><div><span>{copy.result.chartTime}</span><b>{result.correctedTime}</b></div><em className="coordinate-display">{coordinateLabel}</em></div><div className="detail-grid"><article className="detail-card solar-card"><div className="detail-top"><span>{locale === "en" ? "Solar-term record" : locale === "zh-TW" ? "節氣記錄" : "节气记录"}</span><BookOpenText /></div><strong>{result.currentJieQi}</strong><p>{copy.result.previous}：{result.previousJie}<i /> {copy.result.next}：{result.nextJie}</p></article><article className="detail-card"><div className="detail-top"><span>{copy.result.additional}</span><span className="small-mark">A</span></div><dl><div><dt>{copy.result.fetalOrigin}</dt><dd>{result.taiYuan}</dd></div><div><dt>{copy.result.lifePalace}</dt><dd>{result.mingGong}</dd></div><div><dt>{copy.result.bodyPalace}</dt><dd>{result.shenGong}</dd></div></dl></article><article className="detail-card direction-card"><div className="detail-top"><span>{copy.result.direction}</span><span className="small-mark">B</span></div><strong>{result.direction}</strong><p>{copy.result.start}：{result.startYunText}<br />{copy.result.start}：{result.startYunDate}</p></article></div>{result.daYun.length > 0 && <section className="fortune-section" aria-labelledby="fortune-title"><div className="fortune-heading"><h3 id="fortune-title">{copy.result.fortuneDirection}</h3><span>{copy.result.fortuneHint}</span></div><div className="fortune-strip">{result.daYun.map((item) => <div key={`${item.ganzhi}-${item.startYear}`}><b>{item.ganzhi}</b><span>{item.startAge}–{item.endAge} {copy.result.year}</span><small>{item.startYear} {copy.result.start}</small></div>)}</div></section>}<section className="export-panel" aria-label={copy.result.exportKicker}><div className="export-panel-copy"><span>{copy.result.exportKicker}</span><p>{copy.result.exportBody}</p><small>{locale === "en" ? "Sharing only sends the public Guanli link—never your chart, birth details, or saved notes." : locale === "zh-TW" ? "分享只會傳送公開觀曆連結，不包含排盤、出生資料或私人筆記。" : "分享只会发送公开观历链接，不包含排盘、出生资料或私有笔记。"}</small></div><div className="export-actions"><Button className="export-png-button" type="button" onClick={handlePngExport} disabled={isExporting}>{isExporting ? <LoaderCircle className="export-spin" /> : <Download />}{isExporting ? copy.result.generating : copy.result.download}</Button><button className="copy-text-button" type="button" onClick={handleTextCopy} disabled={isCopying}>{isCopying ? <LoaderCircle className="export-spin" /> : exportStatus.includes("copied") || exportStatus.includes("已复制") || exportStatus.includes("已複製") ? <Check /> : <Copy />}{isCopying ? copy.result.copying : copy.result.copy}</button><button className="copy-text-button share-public-button" type="button" onClick={handlePublicShare} disabled={isSharing}><Share2 />{isSharing ? "…" : locale === "en" ? "Share Guanli" : locale === "zh-TW" ? "分享觀曆" : "分享观历"}</button></div><p className="export-status" aria-live="polite">{exportStatus}</p></section></div></details>
           </section>
         </section>
 

@@ -42,12 +42,21 @@ try {
   assert.equal(await desktop.locator("#manual").isVisible(), false);
   assert.equal(await desktop.locator(".input-sheet").isVisible(), true);
   await desktop.locator(".calculate-button").click();
+  await desktop.locator(".chart-loading").waitFor({ state: "visible", timeout: 1000 });
+  assert.match(await desktop.locator(".chart-loading").innerText(), /正在排盘|Making your chart/);
+  await desktop.locator(".chart-loading").waitFor({ state: "hidden", timeout: 2000 });
   await desktop.waitForSelector(".has-calculated .result-page", { state: "visible" });
   assert.equal(await desktop.locator("#manual").isVisible(), true);
+  const resultBridge = desktop.locator(".result-reading-bridge");
+  assert.equal(await resultBridge.isVisible(), true);
+  assert.match(await resultBridge.innerText(), /当前大运|CURRENT DA YUN/);
+  assert.match(await resultBridge.innerText(), /财务线索|MONEY CUE/);
+  assert.equal(await resultBridge.locator('a[href="#manual"]').count(), 1);
   const preciseSettings = desktop.locator(".input-details");
   const chartDetails = desktop.locator(".result-details");
   assert.equal(await preciseSettings.evaluate((element) => element.open), false);
   assert.equal(await chartDetails.evaluate((element) => element.open), false);
+  assert.equal(await desktop.locator(".export-panel").isVisible(), false);
   assert.equal(await desktop.locator(".gender-fieldset").isVisible(), true);
   assert.equal(await desktop.locator(".pillar-details").first().isVisible(), false);
   await preciseSettings.locator("summary").click();
@@ -57,6 +66,7 @@ try {
   assert.equal(await chartDetails.evaluate((element) => element.open), true);
   assert.equal(await chartDetails.locator(".time-ledger").isVisible(), true);
   assert.equal(await desktop.locator(".pillar-details").first().isVisible(), true);
+  assert.equal(await desktop.locator(".export-panel").isVisible(), true);
   const chartRules = desktop.locator(".method-more");
   assert.equal(await chartRules.count(), 1);
   assert.equal(await chartRules.evaluate((element) => element.open), false);
@@ -94,6 +104,22 @@ try {
   await mobile.waitForTimeout(100);
   assert.notEqual(await mobile.locator('.landing-actions a[href="/chart"]').evaluate((element) => getComputedStyle(element).transform), "none");
   await mobile.mouse.up();
+
+  await mobile.goto(`${baseUrl}/chart`, { waitUntil: "networkidle" });
+  assert.equal(await mobile.locator(".result-page").isVisible(), false);
+  await mobile.locator(".calculate-button").click();
+  await mobile.locator(".chart-loading").waitFor({ state: "visible", timeout: 1000 });
+  await mobile.locator(".chart-loading").waitFor({ state: "hidden", timeout: 2000 });
+  await mobile.waitForSelector(".result-reading-bridge", { state: "visible" });
+  assert.match(await mobile.locator(".result-reading-bridge").innerText(), /当前大运|CURRENT DA YUN/);
+  assert.match(await mobile.locator(".result-reading-bridge").innerText(), /财务线索|MONEY CUE/);
+  assert.equal(await mobile.locator(".result-details").evaluate((element) => element.open), false);
+  assert.equal(await mobile.locator(".export-panel").isVisible(), false);
+  await mobile.locator('.result-reading-bridge a[href="#manual"]').click();
+  await mobile.locator("#manual").scrollIntoViewIfNeeded();
+  await mobile.locator(".manual-create-button").click();
+  await mobile.waitForSelector(".month-first-picker", { state: "visible" });
+  assert.equal(await mobile.locator(".month-first-picker .future-month-picker button.is-active").count(), 1);
 
   await mobile.goto(`${baseUrl}/consultation`, { waitUntil: "networkidle" });
   const consultationText = await mobile.locator("main").innerText();

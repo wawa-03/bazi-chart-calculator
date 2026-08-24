@@ -67,6 +67,88 @@
   display: grid;
 }
 
+.chart-loading {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(245, 241, 232, .78);
+  backdrop-filter: blur(3px);
+}
+
+.chart-loading > div {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 24px 28px;
+  border-top: 2px solid var(--cinnabar);
+  background: #fffdf7;
+  box-shadow: 12px 14px 0 rgba(44, 70, 80, .08);
+  animation: chart-loading-in 180ms var(--ease-out) both;
+}
+
+.chart-loading svg {
+  width: 25px;
+  color: var(--cinnabar);
+  animation: city-spin .85s linear infinite;
+}
+
+.chart-loading b { color: #2e403b; font: 800 18px var(--serif); }
+.chart-loading span { color: #748078; font: 10px var(--sans); }
+
+.result-reading-bridge {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 22px;
+  border: 1px solid #d3cabd;
+  background: #d3cabd;
+}
+
+.result-reading-bridge article,
+.result-reading-bridge > a {
+  display: grid;
+  gap: 7px;
+  padding: 15px 16px;
+  background: rgba(249, 247, 240, .96);
+}
+
+.result-reading-bridge article > span {
+  color: #7a8580;
+  font: 500 9px var(--mono);
+  letter-spacing: .08em;
+}
+
+.result-reading-bridge article > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2c3d39;
+  font: 800 23px/1.1 var(--serif);
+}
+
+.result-reading-bridge article > b svg { width: 17px; color: var(--cinnabar); }
+.result-reading-bridge article > small { color: #738078; font: 10px/1.5 var(--sans); }
+
+.result-reading-bridge > a {
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  min-height: 52px;
+  background: var(--cinnabar);
+  color: #fffaf4;
+  font: 700 12px var(--sans);
+  transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.result-reading-bridge > a:hover { background: var(--cinnabar-dark); }
+.result-reading-bridge > a:active { transform: scale(.99); }
+.result-reading-bridge > a svg { width: 16px; }
+.result-reading-bridge > a svg:last-child { justify-self: end; }
+
 .manual-layout:not(.is-reading) {
   grid-template-columns: minmax(0, 430px);
   max-width: 430px;
@@ -123,4 +205,19 @@
   .result-page:has(.result-details[open]) .pillar-card {
     min-height: 285px;
   }
+
+  .result-reading-bridge article,
+  .result-reading-bridge > a {
+    padding: 13px;
+  }
+}
+
+@keyframes chart-loading-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-loading > div,
+  .chart-loading svg { animation: none; }
 }
