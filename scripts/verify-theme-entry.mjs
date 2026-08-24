@@ -7,12 +7,23 @@ try {
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:3000/chart", { waitUntil: "domcontentloaded" });
   await page.locator(".site-locale-control select").selectOption("zh-CN");
+  assert.equal(await page.locator("#manual").isVisible(), false);
+  await page.locator(".calculate-button").click();
+  await page.waitForSelector("#manual", { state: "visible", timeout: 10000 });
   await page.locator("#manual").scrollIntoViewIfNeeded();
   await page.locator(".manual-create-button").click({ timeout: 10000 });
   await page.waitForSelector(".theme-pause-card", { timeout: 10000 });
 
   assert.match(await page.locator(".focus-reading-card").innerText(), /只作参考/);
+  const contrast = page.locator(".fortune-contrast-details");
+  const moreOptions = page.locator(".focus-actions-details");
+  assert.equal(await contrast.evaluate((element) => element.open), false);
+  assert.equal(await moreOptions.evaluate((element) => element.open), false);
+  await contrast.locator(":scope > summary").click();
+  assert.equal(await contrast.evaluate((element) => element.open), true);
   assert.match(await page.locator("#fortune-contrast-title").innerText(), /大运与流年对照/);
+  await moreOptions.locator("summary").click();
+  assert.equal(await moreOptions.evaluate((element) => element.open), true);
   assert.match(await page.locator(".theme-pause-card").innerText(), /现在不用给自己一个答案/);
   assert.equal(await page.getByRole("link", { name: "回到排盘" }).getAttribute("href"), "#calculator");
   assert.equal(await page.locator("#life-themes").isVisible(), false);

@@ -1,0 +1,126 @@
+.input-details,
+.result-details {
+  margin-top: 22px;
+  border-top: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.input-details summary,
+.result-details summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  color: #596861;
+  font: 700 11px var(--sans);
+  cursor: pointer;
+  list-style: none;
+}
+
+.input-details summary::-webkit-details-marker,
+.result-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.input-details summary svg,
+.result-details summary svg {
+  width: 14px;
+  color: var(--cinnabar);
+  transition: transform 160ms var(--ease-out);
+}
+
+.input-details[open] summary svg,
+.result-details[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.input-details > div,
+.result-details > div {
+  padding: 0 0 18px;
+}
+
+.input-details .field-head:first-child {
+  margin-top: 4px;
+}
+
+.input-details .example-button {
+  margin-top: 17px;
+}
+
+.result-details {
+  margin-top: 22px;
+}
+
+.pillar-card {
+  min-height: 226px;
+}
+
+.result-page .pillar-details {
+  display: none;
+}
+
+.result-page:has(.result-details[open]) .pillar-card {
+  min-height: 333px;
+}
+
+.result-page:has(.result-details[open]) .pillar-details {
+  display: grid;
+}
+
+.manual-layout:not(.is-reading) {
+  grid-template-columns: minmax(0, 430px);
+  max-width: 430px;
+  border-right: 1px solid #d2c9ba;
+}
+
+.manual-layout:not(.is-reading) .manual-reading {
+  display: none;
+}
+
+.manual-layout:not(.is-reading) .manual-form-sheet {
+  border-right: 0;
+}
+
+.fortune-contrast-details > .fortune-contrast-card {
+  margin-top: 2px;
+}
+
+.focus-actions-details .focus-actions {
+  margin-top: 0;
+}
+
+.is-awaiting-chart .workspace {
+  width: min(520px, calc(100% - 48px));
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: clamp(64px, 12vh, 130px);
+  border-right: 1px solid var(--paper-line);
+}
+
+.is-awaiting-chart .input-sheet {
+  border-right: 0;
+}
+
+.is-awaiting-chart .result-page,
+.is-awaiting-chart .manual-section,
+.is-awaiting-chart .method-summary-section {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .is-awaiting-chart .workspace {
+    width: min(100% - 32px, 520px);
+    margin-top: 38px;
+  }
+
+  .manual-layout:not(.is-reading) {
+    max-width: none;
+  }
+
+  .pillar-card {
+    min-height: 210px;
+  }
+
+  .result-page:has(.result-details[open]) .pillar-card {
+    min-height: 285px;
+  }
+}

@@ -37,7 +37,26 @@ try {
   assert.equal(await desktop.locator('img[alt="三禺微信好友二维码"]').count(), 0);
 
   await desktop.goto(`${baseUrl}/chart`, { waitUntil: "networkidle" });
-  assert.equal(await desktop.locator('img[alt="Solar-term diagram"]').count(), 1);
+  assert.equal(await desktop.locator(".hero-section").count(), 0);
+  assert.equal(await desktop.locator(".result-page").isVisible(), false);
+  assert.equal(await desktop.locator("#manual").isVisible(), false);
+  assert.equal(await desktop.locator(".input-sheet").isVisible(), true);
+  await desktop.locator(".calculate-button").click();
+  await desktop.waitForSelector(".has-calculated .result-page", { state: "visible" });
+  assert.equal(await desktop.locator("#manual").isVisible(), true);
+  const preciseSettings = desktop.locator(".input-details");
+  const chartDetails = desktop.locator(".result-details");
+  assert.equal(await preciseSettings.evaluate((element) => element.open), false);
+  assert.equal(await chartDetails.evaluate((element) => element.open), false);
+  assert.equal(await desktop.locator(".gender-fieldset").isVisible(), true);
+  assert.equal(await desktop.locator(".pillar-details").first().isVisible(), false);
+  await preciseSettings.locator("summary").click();
+  assert.equal(await preciseSettings.evaluate((element) => element.open), true);
+  assert.equal(await preciseSettings.locator("#longitude").isVisible(), true);
+  await chartDetails.locator("summary").click();
+  assert.equal(await chartDetails.evaluate((element) => element.open), true);
+  assert.equal(await chartDetails.locator(".time-ledger").isVisible(), true);
+  assert.equal(await desktop.locator(".pillar-details").first().isVisible(), true);
   const chartRules = desktop.locator(".method-more");
   assert.equal(await chartRules.count(), 1);
   assert.equal(await chartRules.evaluate((element) => element.open), false);
