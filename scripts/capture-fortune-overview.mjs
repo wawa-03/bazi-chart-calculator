@@ -12,7 +12,7 @@ try {
     await page.goto("http://127.0.0.1:3000/chart", { waitUntil: "networkidle" });
     await page.locator(".calculate-button").click();
     await page.locator(".chart-loading").waitFor({ state: "hidden", timeout: 2000 });
-    await page.locator(".result-fortune-overview").scrollIntoViewIfNeeded();
+    await page.locator(".fate-result-overview").scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${outputDir}/${label}.png` });
     await context.close();
   }

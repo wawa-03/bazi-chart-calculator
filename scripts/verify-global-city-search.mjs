@@ -37,7 +37,7 @@ try {
     await page.locator(".calculate-button").click();
     await page.locator(".chart-loading").waitFor({ state: "hidden", timeout: 2000 });
     await page.waitForSelector(".result-page", { state: "visible", timeout: 8000 });
-    assert.equal(await page.locator(".result-fortune-overview").isVisible(), true);
+    assert.equal(await page.locator(".fate-result-overview").isVisible(), true);
     const correctionText = await page.locator(".correction-seal").innerText();
     corrections.set(city.name, correctionText);
 

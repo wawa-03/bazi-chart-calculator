@@ -16,8 +16,11 @@ try {
 
   assert.equal(await page.locator(".month-first-picker").isVisible(), true);
   assert.ok(await page.locator(".month-first-picker .future-month-picker button.is-active").count() === 1);
-  assert.match(await page.locator(".focus-reading-card").innerText(), /只作参考/);
-  assert.match(await page.locator(".focus-reading-card").innerText(), /看\s*\n|看\s/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /命理判读，不保证事件结果/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /流月/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /命局/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /行运/);
+  assert.match(await page.locator(".focus-reading-card").innerText(), /医疗、法律、投资或重大人生决策/);
   const contrast = page.locator(".fortune-contrast-details");
   const moreOptions = page.locator(".focus-actions-details");
   assert.equal(await contrast.evaluate((element) => element.open), false);
@@ -37,15 +40,15 @@ try {
   assert.equal(await page.locator(".theme-pause-card").isVisible(), true);
   await page.getByRole("link", { name: "回到排盘" }).click();
   await page.waitForURL(/#calculator$/);
-  assert.match(await page.locator("#life-themes").innerText(), /关系与亲密/);
-  assert.match(await page.locator("#life-themes").innerText(), /事业与路径/);
-  assert.match(await page.locator("#life-themes").innerText(), /财务与资源/);
-  assert.match(await page.locator("#life-themes").innerText(), /生活节奏/);
+  assert.match(await page.locator("#life-themes").innerText(), /关系与婚姻/);
+  assert.match(await page.locator("#life-themes").innerText(), /事业与职分/);
+  assert.match(await page.locator("#life-themes").innerText(), /财运与财星/);
+  assert.match(await page.locator("#life-themes").innerText(), /五行与调候/);
   assert.equal(await page.locator(".annual-upgrade-gate").count(), 0);
   assert.equal(await page.locator(".focus-consult-link").getAttribute("href"), "/consultation?service=deep_reading");
   assert.ok(await page.getByRole("button", { name: /分享观历/ }).count() >= 1);
   assert.equal(await page.locator(".manual-reading img[alt='三禺微信好友二维码']").count(), 0);
-  console.log("Free full-reading verification passed: future volume reveals Da Yun/flow-year contrast, all four life themes, and a human-discussion entry without a purchase gate.");
+  console.log("Free full-reading verification passed: future volume derives a flowing month from the natal chart and Da Yun, reveals four fate domains, and keeps the human-discussion entry without a purchase gate.");
   await context.close();
 } finally {
   await browser.close();
